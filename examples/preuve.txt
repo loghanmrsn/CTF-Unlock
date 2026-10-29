@@ -1,0 +1,2 @@
+CTF Unlock — archive de démonstration, mot de passe connu : CTF42.
+Ce fichier est réservé à la validation locale du logiciel.
