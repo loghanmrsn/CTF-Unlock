@@ -1,6 +1,6 @@
 # Reprise · CTF Unlock v1
 
-État au 29 octobre 2026. Projet neuf, créé dans `/workspace/CTF-Unlock`. Aucun ancien prototype utilisé et aucune publication GitHub effectuée pour ce projet.
+État au 29 octobre 2026. Projet neuf, créé dans `/workspace/CTF-Unlock`. Aucun ancien prototype utilisé. Les sources sont publiées sur [loghanmrsn/CTF-Unlock](https://github.com/loghanmrsn/CTF-Unlock), branche `main`. Le checkout local existant a été conservé et son commit initial `8d7f7d8` publié sur le dépôt GitHub vide après son ajout à la sélection de cet environnement.
 
 ## Ce qui fonctionne
 
