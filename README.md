@@ -128,7 +128,7 @@ En mode 7-Zip, chaque candidat lance **un test complet de l'archive**. John calc
 
 ## Conservation des originaux et confidentialité
 
-Les opérations moteur sont uniquement `i` (version), `l` (liste) et `t` (test). Aucun appel d'extraction, modification, réparation ou suppression. Les chemins sont absolus et les commandes utilisent des **listes d'arguments, sans shell**. Le programme ne construit jamais une commande shell à partir du nom du fichier ou d'un candidat. Une modification externe de la taille/date du fichier pendant la recherche provoque un arrêt.
+Les opérations 7-Zip sont uniquement `i` (version), `l` (liste) et `t` (test). John utilise zip2john, son mode wordlist CPU et `--show`, dans un dossier temporaire dédié. Aucun appel d'extraction, modification, réparation ou suppression. Les chemins sont absolus et les commandes utilisent des **listes d'arguments, sans shell**. Le programme ne construit jamais une commande shell à partir du nom du fichier ou d'un candidat. Une modification externe de la taille/date du fichier pendant la recherche provoque un arrêt.
 
 Les fichiers originaux et les listes restent à leur emplacement. Les sorties temporaires du moteur sont automatiquement fermées ; aucun fichier n'est envoyé à un service, et en mode 7-Zip l'application n'enregistre pas de liste ou de pot. Le mode John utilise les fichiers temporaires décrits ci-dessus, supprimés après une fin normale de tâche. Les préférences ne contiennent que chemins des moteurs et limites ; un bilan peut être exporté sans mot de passe ni diagnostic brut. Le mot de passe doit toutefois être fourni à 7-Zip comme argument de processus : il peut être visible pour les outils locaux ayant accès à la ligne de commande. Les chemins et les messages techniques peuvent apparaître dans l'interface. La lecture peut modifier la date d'accès gérée par le système, pas le contenu du fichier.
 
@@ -170,7 +170,7 @@ Pour inclure les tests John, définir aussi `CTF_UNLOCK_JOHN` et `CTF_UNLOCK_ZIP
 .venv\Scripts\python.exe -m PyInstaller --noconfirm --clean CTF-Unlock.spec
 ```
 
-Le dossier `dist\CTF-Unlock` contient `CTF-Unlock.exe` et `_internal` avec Python, Qt et le thème. Copier **tout le dossier**, pas uniquement le `.exe`. 7-Zip reste une dépendance externe à installer depuis son site officiel. Pour partager, copier aussi `README.md`, `REPRISE.md` et `examples/` à côté de l'exécutable, puis archiver tout le dossier. L'exécutable n'est pas signé.
+Le dossier `dist\CTF-Unlock` contient `CTF-Unlock.exe` et `_internal` avec Python, Qt et le thème. Copier **tout le dossier**, pas uniquement le `.exe`. 7-Zip et, si ce mode est utilisé, John Jumbo restent des dépendances externes à installer depuis leurs sources officielles. Pour partager, copier aussi `README.md`, `REPRISE.md` et `examples/` à côté de l'exécutable, puis archiver tout le dossier. L'exécutable n'est pas signé.
 
 PyInstaller ne fabrique pas un exécutable Windows depuis Linux. Le packaging et son démarrage sont vérifiés ici **uniquement pour Linux** ; aucun binaire Windows fonctionnel n'est annoncé.
 

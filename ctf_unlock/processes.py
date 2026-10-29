@@ -101,9 +101,15 @@ def resume_windows_process(process):
                 if not thread:
                     raise ResourceError('Impossible d’ouvrir le thread initial du moteur.')
                 try:
-                    if kernel.ResumeThread(thread) == 0xffffffff:
+                    previous = kernel.ResumeThread(thread)
+                    if previous == 0xffffffff:
                         raise ResourceError('Impossible de reprendre le moteur Windows limité.')
-                    return
+                    if previous == 1:
+                        return
+                    if previous > 1:
+                        raise ResourceError('Le thread moteur est suspendu par un autre outil.')
+                    # Un thread système/injecté déjà actif peut apparaître avant
+                    # le thread initial ; ne pas le confondre avec celui-ci.
                 finally:
                     kernel.CloseHandle(thread)
             available = kernel.Thread32Next(snapshot, c.byref(entry))

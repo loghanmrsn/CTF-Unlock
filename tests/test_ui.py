@@ -137,7 +137,8 @@ class InterfaceTests(unittest.TestCase):
         beats = []
         timer = QTimer(); timer.timeout.connect(lambda: beats.append(1)); timer.start(5)
         self.window.start()
-        wait_until(lambda: self.window.latest.attempted >= 1)
+        wait_until(lambda: self.window.latest.attempted >= 1 or not self.window.busy)
+        self.assertTrue(self.window.busy, (self.window.result, self.window.journal.toPlainText()))
         QTest.mouseClick(self.window.pause_button, Qt.MouseButton.LeftButton)
         wait_until(lambda: 'En pause' in self.window.phase.text() or not self.window.busy)
         self.assertTrue(self.window.busy, (self.window.result, self.window.journal.toPlainText()))
