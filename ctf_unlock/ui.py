@@ -228,7 +228,9 @@ class MainWindow(QMainWindow):
             widget.valueChanged.connect(lambda: self.preference_timer.start())
         self.engine_path.textChanged.connect(lambda: self.preference_timer.start())
         self.john_path.textChanged.connect(lambda: self.preference_timer.start())
+        self.john_path.textChanged.connect(lambda: self.john_version.setText('John modifié : version à vérifier.'))
         self.zip2john_path.textChanged.connect(lambda: self.preference_timer.start())
+        self.zip2john_path.textChanged.connect(lambda: self.john_version.setText('Extracteur modifié : paquet Jumbo à vérifier.'))
         self.engine_path.textChanged.connect(lambda: self.engine_version.setText('Moteur modifié : version à vérifier.'))
         self.navigate(0)
         if self.preference_error:

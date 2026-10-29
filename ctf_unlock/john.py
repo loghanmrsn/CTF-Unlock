@@ -42,7 +42,7 @@ class JohnJumbo:
     verifier: SevenZip
 
     def command(self, arguments, limits, abort=lambda: None, timeout=None, heartbeat=None):
-        path = Path(self.executable)
+        path = Path(self.executable).expanduser()
         if not self.executable or not path.is_file():
             raise FileNotFoundError('John Jumbo absent. Sélectionnez john.exe (ou john) depuis une distribution officielle Openwall.')
         return run([str(path.expanduser().absolute()), *arguments], timeout=timeout or limits.attempt_seconds,
@@ -54,7 +54,7 @@ class JohnJumbo:
         version = re.search(r'^Version:\s*(.+)$', result.output, re.MULTILINE)
         if result.code or not version or 'jumbo' not in version.group(1).lower():
             raise ValueError('John Jumbo requis ; le John standard ne fournit pas les formats ZIP de cette intégration.')
-        if not self.extractor or not Path(self.extractor).is_file():
+        if not self.extractor or not Path(self.extractor).expanduser().is_file():
             raise FileNotFoundError('zip2john absent. Sélectionnez zip2john.exe (ou zip2john) du même paquet officiel Jumbo.')
         return 'John ' + version.group(1).strip()
 

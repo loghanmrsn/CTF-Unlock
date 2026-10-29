@@ -157,7 +157,7 @@ CTF_UNLOCK_7ZIP=/chemin/vers/7zz QT_QPA_PLATFORM=offscreen \
 
 `CTF_UNLOCK_7ZIP` est une variable **de test** ; dans l'application, sélectionner le moteur dans Réglages ou l'installer à un emplacement automatiquement détecté.
 
-**39 tests réussis sous Linux**, dont neuf tests Qt réels, avec John Jumbo et 7-Zip présents. Sans un moteur requis, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Les tests d’arrêt de processus et de limite mémoire sont exécutables sous Linux et Windows ; le test Windows attend effectivement la terminaison du processus via son handle système. Le rendu Qt a été capturé et inspecté sous Linux. **Windows, son Job Object, le BAT et un exécutable Windows ne sont pas encore validés** : voir `REPRISE.md`.
+**39 tests réussis sous Linux**, dont neuf tests Qt réels, avec John Jumbo et 7-Zip présents. Sans un moteur requis, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Les tests d’arrêt de processus et de limite mémoire sont exécutables sous Linux et Windows ; le test Windows attend effectivement la terminaison du processus via son handle système. Le rendu Qt a été capturé et inspecté sous Linux. **Les 39 tests ont aussi réussi trois fois sur le runner Windows**, John et Job Objects compris ; construction et démarrage hors écran du `.exe` vérifiés. Le BAT et l’essai interactif sur un bureau Windows restent à valider : voir `REPRISE.md`.
 
 Pour inclure les tests John, définir aussi `CTF_UNLOCK_JOHN` et `CTF_UNLOCK_ZIP2JOHN` vers les exécutables officiels. Sans eux, les tests John sont explicitement ignorés. Le workflow Windows télécharge le paquet officiel Openwall v1.9.1-ce et vérifie son SHA-256 fixé avant extraction ; il ne redistribue pas ce paquet dans l'artefact CTF Unlock.
 
@@ -172,7 +172,7 @@ Pour inclure les tests John, définir aussi `CTF_UNLOCK_JOHN` et `CTF_UNLOCK_ZIP
 
 Le dossier `dist\CTF-Unlock` contient `CTF-Unlock.exe` et `_internal` avec Python, Qt et le thème. Copier **tout le dossier**, pas uniquement le `.exe`. 7-Zip et, si ce mode est utilisé, John Jumbo restent des dépendances externes à installer depuis leurs sources officielles. Pour partager, copier aussi `README.md`, `REPRISE.md` et `examples/` à côté de l'exécutable, puis archiver tout le dossier. L'exécutable n'est pas signé.
 
-PyInstaller ne fabrique pas un exécutable Windows depuis Linux. Le packaging et son démarrage sont vérifiés ici **uniquement pour Linux** ; aucun binaire Windows fonctionnel n'est annoncé.
+PyInstaller ne fabrique pas un exécutable Windows depuis Linux. La [construction Windows validée](https://github.com/loghanmrsn/CTF-Unlock/actions/runs/40865591410) fournit l’artefact **CTF-Unlock-Windows**. Le packaging et le démarrage ont été contrôlés automatiquement sous Windows et Linux ; l’essai interactif sur un bureau Windows reste à faire.
 
 ## Structure et extensions futures
 
