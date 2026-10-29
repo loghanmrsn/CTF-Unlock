@@ -1,10 +1,22 @@
-# CTF Unlock · its lizhy · Loghan
+# CTF Unlock 1.1 · its lizhy · Loghan
 
 **Un fichier. Des pistes.**
 
 Application de bureau Python 3.12 + PySide6 pour analyser des archives de challenges CTF et tenter des mots de passe **hors ligne**, sur des fichiers pour lesquels vous disposez d'une autorisation. Thème noir, blanc et argent inspiré du [portfolio](https://loghanmrsn.github.io/Portfolio/).
 
 Le logiciel est utilisable, mais ne garantit aucune récupération. Il ne prétend pas ouvrir tous les fichiers.
+
+## Nouveautés de la version 1.1
+
+- Le chemin de 7-Zip et les limites sont mémorisés automatiquement, avec un bouton d'enregistrement manuel. Aucun chemin d'archive, liste, masque, candidat ou mot de passe n'est mémorisé.
+- **Copier** récupère un mot de passe réellement vérifié. Le presse-papier est effacé après 30 secondes ou à la fermeture, uniquement si son contenu est encore celui copié par CTF Unlock. Un autre contenu copié entre-temps est conservé. L'historique éventuel du presse-papier Windows est géré par Windows, pas par l'application.
+- **Exporter le bilan JSON** enregistre uniquement nom du fichier (sans chemin complet), moteur, issue, date UTC et statistiques. Aucun mot de passe ni diagnostic brut. L'export refuse de remplacer l'archive, la liste, le moteur ou les réglages, y compris via un lien vers le même fichier.
+- Des indications expliquent quoi faire après chaque résultat. Les masques signalent si le plafond de candidats ne couvre pas tout l'espace de recherche.
+- L'interface défile sur les petits écrans, avec des commandes accessibles à partir de 820 × 620 pixels logiques.
+- Une erreur lors de la vérification du moteur ne remplace plus le résultat d'une recherche précédente par un résultat sans rapport.
+- Le workflow GitHub **CTF Unlock Windows** exécute les tests, construit le logiciel et produit l'artefact **CTF-Unlock-Windows**. Il exige le 7-Zip fourni par le runner ; aucune archive de test ne sera simulée si le moteur manque.
+
+Les réglages sont stockés dans `%LOCALAPPDATA%\CTF-Unlock\preferences.json` sous Windows et `$XDG_CONFIG_HOME/ctf-unlock/preferences.json` (ou `~/.config/ctf-unlock/preferences.json`) sous Linux. Leur écriture est atomique. Si le fichier est illisible, l'original reste intact et l'enregistrement automatique est désactivé : corriger ou déplacer ce fichier puis relancer l'application. Les erreurs d'enregistrement restent visibles.
 
 ## Formats et moteur réellement pris en charge
 
@@ -101,7 +113,7 @@ Chaque candidat lance **un test complet de l'archive**. Ce moteur est volontaire
 
 Les opérations moteur sont uniquement `i` (version), `l` (liste) et `t` (test). Aucun appel d'extraction, modification, réparation ou suppression. Les chemins sont absolus et les commandes utilisent des **listes d'arguments, sans shell**. Le programme ne construit jamais une commande shell à partir du nom du fichier ou d'un candidat. Une modification externe de la taille/date du fichier pendant la recherche provoque un arrêt.
 
-Les fichiers originaux et les listes restent à leur emplacement. Les sorties temporaires du moteur sont automatiquement fermées ; aucun fichier n'est envoyé à un service, et l'application ne sauvegarde ni candidats ni résultats sur disque. Le mot de passe doit toutefois être fourni à 7-Zip comme argument de processus : il peut être visible pour les outils locaux ayant accès à la ligne de commande. Les chemins et les messages techniques peuvent apparaître dans l'interface. La lecture peut modifier la date d'accès gérée par le système, pas le contenu du fichier.
+Les fichiers originaux et les listes restent à leur emplacement. Les sorties temporaires du moteur sont automatiquement fermées ; aucun fichier n'est envoyé à un service, et l'application n'enregistre jamais les candidats ou mots de passe sur disque. Elle mémorise seulement moteur et limites ; un bilan statistique peut être exporté volontairement sans mot de passe ni diagnostic brut. Le mot de passe doit toutefois être fourni à 7-Zip comme argument de processus : il peut être visible pour les outils locaux ayant accès à la ligne de commande. Les chemins et les messages techniques peuvent apparaître dans l'interface. La lecture peut modifier la date d'accès gérée par le système, pas le contenu du fichier.
 
 ## Tests
 
@@ -128,7 +140,7 @@ CTF_UNLOCK_7ZIP=/chemin/vers/7zz QT_QPA_PLATFORM=offscreen \
 
 `CTF_UNLOCK_7ZIP` est une variable **de test** ; dans l'application, sélectionner le moteur dans Réglages ou l'installer à un emplacement automatiquement détecté.
 
-**22 tests réussis sous Linux**, dont cinq tests Qt réels. Sans moteur, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Deux tests propres à Linux (PID/limite mémoire) sont ignorés sur Windows. Le rendu Qt a été capturé et inspecté sous Linux. **Windows, son Job Object, le BAT et un exécutable Windows ne sont pas encore validés** : voir `REPRISE.md`.
+**30 tests réussis sous Linux**, dont huit tests Qt réels. Sans moteur, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Deux tests propres à Linux (PID/limite mémoire) sont ignorés sur Windows. Le rendu Qt a été capturé et inspecté sous Linux. **Windows, son Job Object, le BAT et un exécutable Windows ne sont pas encore validés** : voir `REPRISE.md`.
 
 ## Construire un exécutable Windows
 
@@ -154,6 +166,7 @@ ctf_unlock/processes.py    processus et limites système
 ctf_unlock/candidates.py   dictionnaire progressif et masque
 ctf_unlock/tasks.py        recherche, pause, annulation
 ctf_unlock/ui.py           interface Qt et travaux hors du thread GUI
+ctf_unlock/storage.py      réglages atomiques et bilans sans mot de passe
 theme.qss                  thème noir, blanc et argent
 tests/                     validations unitaires, moteurs et interface
 examples/                  archives connues et liste de démonstration

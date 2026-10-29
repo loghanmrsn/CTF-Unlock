@@ -5,7 +5,7 @@ import time
 from PySide6.QtCore import QObject, Property, QPropertyAnimation, QRunnable, QSize, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog,
-    QFormLayout, QFrame, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPlainTextEdit,
+    QFormLayout, QFrame, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
     QProgressBar, QPushButton, QScrollArea, QSpinBox, QStackedWidget, QVBoxLayout, QWidget)
 
 from .archives import inspect
@@ -13,6 +13,7 @@ from .candidates import Dictionary, Mask
 from .engine import SevenZip, find_7zip
 from .models import Limits, Outcome, Progress, Result
 from .tasks import Control, recover
+from .storage import Preferences, PreferenceStore, report_data, write_json
 
 
 def resources():
@@ -125,11 +126,22 @@ class Worker(QRunnable):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, engine_path=None):
+    def __init__(self, engine_path=None, preferences_path=None):
         super().__init__()
-        self.setWindowTitle('CTF Unlock · its lizhy')
+        self.store = PreferenceStore(preferences_path)
+        self.preference_error = ''
+        try:
+            self.saved = self.store.load()
+        except (OSError, ValueError) as exc:
+            self.saved = Preferences()
+            self.preference_error = str(exc)
+        self.task_file = None
+        self.task_list = None
+        self.task_engine = ''
+        self.clipboard_secret = None
+        self.setWindowTitle('CTF Unlock 1.1 · its lizhy')
         self.resize(1100, 820)
-        self.setMinimumSize(920, 740)
+        self.setMinimumSize(820, 620)
         self.pool = QThreadPool(self)
         self.pool.setMaxThreadCount(1)
         self.busy = False
@@ -179,8 +191,9 @@ class MainWindow(QMainWindow):
         self.build_settings_page(engine_path)
         self.build_results_page()
         self.phase = text('Choisissez une archive et vérifiez le moteur dans Réglages.', 'status')
+        self.phase.setMaximumHeight(58)
         layout.addWidget(self.phase)
-        self.metrics = text('0 essai · 0,00 essai/s · 0,0 s', 'micro')
+        self.metrics = text('0 essai · 0,00 essai/s · 0,0 s', 'metrics')
         layout.addWidget(self.metrics)
         self.bar = QProgressBar()
         self.bar.setRange(0, 1000)
@@ -202,7 +215,21 @@ class MainWindow(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh_metrics)
         self.timer.start(250)
+        self.clipboard_timer = QTimer(self)
+        self.clipboard_timer.setSingleShot(True)
+        self.clipboard_timer.timeout.connect(self.clear_copied_password)
+        self.preference_timer = QTimer(self)
+        self.preference_timer.setSingleShot(True)
+        self.preference_timer.setInterval(500)
+        self.preference_timer.timeout.connect(lambda: self.save_preferences(quiet=True))
+        self.restore_limits(self.saved.limits)
+        for widget in (self.seconds, self.cap, self.threads, self.memory, self.attempt_time):
+            widget.valueChanged.connect(lambda: self.preference_timer.start())
+        self.engine_path.textChanged.connect(lambda: self.preference_timer.start())
+        self.engine_path.textChanged.connect(lambda: self.engine_version.setText('Moteur modifié : version à vérifier.'))
         self.navigate(0)
+        if self.preference_error:
+            QTimer.singleShot(0, lambda: self.error(self.preference_error))
 
     def navigate(self, index):
         self.pages.setCurrentIndex(index)
@@ -265,6 +292,7 @@ class MainWindow(QMainWindow):
         form.addRow('Longueur minimale', self.minimum)
         form.addRow('Longueur maximale', self.maximum)
         self.mask_size = text('', 'muted')
+        self.mask_size.setAccessibleName('Taille de la recherche')
         form.addRow(self.mask_size)
         self.alphabet.textChanged.connect(self.update_mask)
         self.minimum.valueChanged.connect(self.update_mask)
@@ -277,7 +305,7 @@ class MainWindow(QMainWindow):
 
     def build_settings_page(self, engine_path):
         self.settings_panel, layout = self.page('Moteur et limites')
-        self.engine_path = QLineEdit(find_7zip() if engine_path is None else engine_path)
+        self.engine_path = QLineEdit((self.saved.engine or find_7zip()) if engine_path is None else engine_path)
         self.engine_path.setPlaceholderText('7z.exe ou 7zz · installation officielle requise')
         layout.addWidget(self.engine_path)
         controls = QHBoxLayout()
@@ -297,6 +325,9 @@ class MainWindow(QMainWindow):
                               ('Threads 7-Zip', self.threads), ('Mémoire du moteur (Mio)', self.memory), ('Délai par opération moteur (s)', self.attempt_time)]:
             form.addRow(title, widget)
         layout.addLayout(form)
+        self.cap.valueChanged.connect(self.update_mask)
+        layout.addWidget(button('Enregistrer les réglages', self.save_preferences))
+        layout.addWidget(text('Le moteur et les limites sont mémorisés localement. Aucun fichier analysé, liste ou mot de passe n’est enregistré.', 'muted'))
         layout.addWidget(text('Une seule tâche et un seul processus moteur à la fois.\nLa mémoire limite le moteur, pas l’interface Qt. La pause attend la fin de l’essai courant.', 'muted'))
 
     def build_results_page(self):
@@ -307,7 +338,17 @@ class MainWindow(QMainWindow):
         self.password.setReadOnly(True)
         self.password.setEchoMode(QLineEdit.EchoMode.Password)
         self.password.setPlaceholderText('Aucun mot de passe vérifié')
-        layout.addWidget(self.password)
+        password_row = QHBoxLayout()
+        password_row.addWidget(self.password, 1)
+        self.copy_button = button('Copier', self.copy_password)
+        self.copy_button.setEnabled(False)
+        password_row.addWidget(self.copy_button)
+        layout.addLayout(password_row)
+        self.result_help = text('Les résultats de la prochaine recherche apparaîtront ici.', 'muted')
+        layout.addWidget(self.result_help)
+        self.export_button = button('Exporter le bilan JSON · sans mot de passe', self.export_report)
+        self.export_button.setEnabled(False)
+        layout.addWidget(self.export_button)
         self.reveal = SlideSwitch('Afficher le mot de passe trouvé')
         self.reveal.toggled.connect(lambda checked: self.password.setEchoMode(QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password))
         layout.addWidget(self.reveal)
@@ -329,7 +370,8 @@ class MainWindow(QMainWindow):
         self.journal.appendPlainText(message)
 
     def error(self, message):
-        self.phase.setText('Erreur : ' + message)
+        self.phase.setText('Erreur : ' + message.splitlines()[0][:240])
+        self.phase.setToolTip(message)
         self.log('Erreur : ' + message)
 
     def choose_file(self):
@@ -342,7 +384,13 @@ class MainWindow(QMainWindow):
             self.file_path.setText(path)
             self.file_info.setText('Analyse en attente…')
             self.password.clear()
+            self.copy_button.setEnabled(False)
+            self.export_button.setEnabled(False)
+            self.result_help.setText('Nouvelle archive sélectionnée. Choisissez une méthode puis démarrez.')
             self.result = None
+            self.task_file = None
+            self.task_list = None
+            self.task_engine = ''
             self.result_title.setText('Aucune recherche sur ce fichier.')
             self.analyze()
 
@@ -363,7 +411,9 @@ class MainWindow(QMainWindow):
 
     def update_mask(self):
         try:
-            self.mask_size.setText(f'{self.mask().total:,} candidats possibles avant application des limites.')
+            total = self.mask().total
+            cap = self.cap.value() if hasattr(self, 'cap') else Limits().candidates
+            self.mask_size.setText(f'{total:,} candidats possibles. ' + (f'Le plafond de {cap:,} essais ne couvre pas tout le masque.' if total > cap else 'Tous les candidats tiennent dans le plafond d’essais.'))
         except ValueError as exc:
             self.mask_size.setText(str(exc))
 
@@ -440,8 +490,15 @@ class MainWindow(QMainWindow):
             path = Path(self.file_path.text())
         except (ValueError, OSError) as exc:
             self.error(str(exc)); return
+        self.save_preferences(quiet=True)
+        self.task_file = path.resolve()
+        self.task_list = source.path.resolve() if isinstance(source, Dictionary) else None
+        self.task_engine = ''
         self.result = None
         self.password.clear()
+        self.copy_button.setEnabled(False)
+        self.export_button.setEnabled(False)
+        self.result_help.setText('La recherche est en cours. Aucun mot de passe n’est encore validé.')
         self.reveal.setChecked(False)
         self.details.clear()
         self.result_title.setText('Recherche en cours…')
@@ -465,7 +522,8 @@ class MainWindow(QMainWindow):
         self.latest = progress
         self.phase.setText(progress.phase)
         if progress.phase.startswith('Moteur vérifié : '):
-            self.engine_version.setText(progress.phase.removeprefix('Moteur vérifié : '))
+            self.task_engine = progress.phase.removeprefix('Moteur vérifié : ')
+            self.engine_version.setText(self.task_engine)
             self.log(progress.phase)
         if progress.total:
             self.bar.setRange(0, 1000)
@@ -480,6 +538,7 @@ class MainWindow(QMainWindow):
             self.metrics.setText(f'{attempts:,}{total} essais · {attempts / max(elapsed, .001):.2f} essai/s · {elapsed:.1f} s')
 
     def done(self, value):
+        was_recovering = self.recovering
         self.busy = False
         self.recovering = False
         for panel in (self.file_panel, self.method_panel, self.settings_panel):
@@ -490,14 +549,35 @@ class MainWindow(QMainWindow):
         self.bar.setRange(0, 1000)
         self.bar.setValue(0)
         if isinstance(value, Result):
+            if not was_recovering:
+                self.error(value.detail)
+                if self.closing:
+                    self.close()
+                return
             self.result = value
+            self.copy_button.setEnabled(value.outcome == Outcome.FOUND and bool(value.password))
+            self.export_button.setEnabled(self.task_file is not None)
+            hints = {
+                Outcome.FOUND: 'Le test intégral est réussi. Copiez le mot de passe ou exportez un bilan sans secret.',
+                Outcome.EXHAUSTED: 'Tous les candidats proposés ont été rejetés. Vous pouvez essayer une autre liste ou un autre masque.',
+                Outcome.LIMITED: 'La recherche est incomplète. Ajustez la limite concernée avant de recommencer.',
+                Outcome.INTERRUPTED: 'La tâche est arrêtée. Un nouveau démarrage recommence la recherche depuis le début.',
+                Outcome.DAMAGED: 'Vérifiez votre copie du challenge : cette erreur ne permet pas de conclure sur un mot de passe.',
+                Outcome.UNSUPPORTED: 'Cette variante n’est pas prise en charge. ZIP et 7z restent les formats de cette version.',
+                Outcome.UNPROTECTED: 'L’archive s’ouvre sans mot de passe ; aucun secret à copier.',
+                Outcome.ERROR: 'Consultez le message et, si disponible, les détails techniques avant de réessayer.',
+            }
+            self.result_help.setText(hints[value.outcome])
             self.result_title.setText(str(value.outcome))
+            self.result_title.setProperty('success', value.outcome == Outcome.FOUND)
+            self.result_title.style().unpolish(self.result_title)
+            self.result_title.style().polish(self.result_title)
             self.phase.setText(str(value.outcome))
             self.metrics.setText(f'{value.attempted:,} essais · {value.attempted / max(value.elapsed, .001):.2f} essai/s · {value.elapsed:.1f} s')
             self.password.setText(value.password or '')
             self.log(f'{value.outcome}\n{value.detail}')
             self.details.setPlainText(value.technical or 'Pas de diagnostic technique supplémentaire. Les arguments contenant les mots de passe ne sont pas journalisés.')
-            if value.outcome in (Outcome.FOUND, Outcome.UNPROTECTED):
+            if value.outcome in (Outcome.FOUND, Outcome.UNPROTECTED, Outcome.EXHAUSTED):
                 self.bar.setValue(1000)
         else:
             self.phase.setText('Analyse terminée.')
@@ -514,12 +594,76 @@ class MainWindow(QMainWindow):
         if self.closing:
             self.close()
 
+    def restore_limits(self, limits):
+        self.seconds.setValue(int(limits.seconds))
+        self.attempt_time.setMaximum(self.seconds.value())
+        self.cap.setValue(limits.candidates)
+        self.threads.setValue(limits.threads)
+        self.memory.setValue(limits.memory_mb)
+        self.attempt_time.setValue(limits.attempt_seconds)
+
+    def save_preferences(self, quiet=False):
+        if self.store.read_only:
+            if not quiet:
+                self.error('Les réglages sont protégés après une erreur de lecture : ' + str(self.store.path))
+            return False
+        try:
+            self.store.save(Preferences(self.engine_path.text(), self.limits()))
+        except (OSError, ValueError) as exc:
+            self.error(f'Sauvegarde des réglages impossible : {exc}')
+            return False
+        if not quiet:
+            self.phase.setText('Réglages enregistrés localement.')
+        return True
+
+    def copy_password(self):
+        if not self.result or self.result.outcome != Outcome.FOUND or not self.result.password:
+            return
+        self.clipboard_secret = self.result.password
+        QApplication.clipboard().setText(self.clipboard_secret)
+        self.clipboard_timer.start(30000)
+        self.phase.setText('Mot de passe copié. Effacement du presse-papier dans 30 secondes si son contenu est inchangé.')
+
+    def clear_copied_password(self):
+        clipboard = QApplication.clipboard()
+        if self.clipboard_secret is not None and clipboard.text() == self.clipboard_secret:
+            clipboard.clear()
+        self.clipboard_secret = None
+        self.clipboard_timer.stop()
+
+    def export_report(self):
+        if not self.result or self.task_file is None:
+            return
+        path, _ = QFileDialog.getSaveFileName(self, 'Exporter un bilan sans mot de passe', 'CTF-Unlock-bilan.json', 'Bilan JSON (*.json)')
+        if not path:
+            return
+        target = Path(path).with_suffix('.json').resolve()
+        protected = [self.task_file, self.task_list, self.store.path, Path(self.engine_path.text())]
+        if self.file_path.text():
+            protected.append(Path(self.file_path.text()))
+        if self.wordlist.text():
+            protected.append(Path(self.wordlist.text()))
+        try:
+            for original in filter(None, protected):
+                original = Path(original).resolve()
+                if target == original or (target.exists() and original.exists() and target.samefile(original)):
+                    raise ValueError('Le rapport ne peut pas remplacer un fichier source, le moteur ou les réglages.')
+            write_json(target, report_data(self.result, self.task_file.name, self.task_engine))
+        except (OSError, ValueError) as exc:
+            self.error(f'Export impossible : {exc}')
+            return
+        self.phase.setText('Bilan exporté sans mot de passe ni liste de candidats.')
+
     def closeEvent(self, event):
         if self.busy:
             self.closing = True
             self.stop()
             event.ignore()
         else:
+            self.preference_timer.stop()
+            if not self.store.read_only and not self.save_preferences(quiet=True):
+                QMessageBox.warning(self, 'Réglages non enregistrés', self.phase.text())
+            self.clear_copied_password()
             event.accept()
 
 

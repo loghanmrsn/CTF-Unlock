@@ -1,0 +1,70 @@
+name: CTF Unlock Windows
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Installer les dépendances
+        run: python -m pip install -r requirements.txt PyInstaller==6.12.0
+      - name: Localiser le moteur fourni par le runner Windows
+        shell: pwsh
+        run: |
+          $engine = Join-Path $env:ProgramFiles '7-Zip/7z.exe'
+          if (!(Test-Path $engine)) { throw '7-Zip absent du runner : aucun test d’archive ne sera simulé.' }
+          "CTF_UNLOCK_7ZIP=$engine" >> $env:GITHUB_ENV
+      - name: Tester le noyau et la vraie interface Qt
+        env:
+          QT_QPA_PLATFORM: offscreen
+        shell: pwsh
+        run: |
+          @'
+          import os, subprocess, sys
+          result = subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace', env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
+          print(result.stdout)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as stream:
+              stream.write('## Tests Windows\n\n```text\n' + result.stdout + '\n```\n')
+          if result.returncode:
+              diagnostic = result.stdout[-24000:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print('::error title=Tests Windows::' + diagnostic)
+          sys.exit(result.returncode)
+          '@ | python -
+      - name: Construire
+        run: python -m PyInstaller --noconfirm --clean CTF-Unlock.spec
+      - name: Tester le démarrage du logiciel empaqueté
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'CTF-Unlock-Smoke'
+          $process = Start-Process -FilePath '.\dist\CTF-Unlock\CTF-Unlock.exe' -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            if ($process.HasExited) { throw "CTF Unlock s'est fermé au démarrage : $($process.ExitCode)" }
+            if (!(Test-Path 'dist/CTF-Unlock/_internal/theme.qss')) { throw 'Le thème empaqueté est absent' }
+          } finally {
+            if (!$process.HasExited) { Stop-Process -Id $process.Id }
+          }
+      - name: Ajouter la documentation et les exemples
+        shell: pwsh
+        run: |
+          Copy-Item README.md,REPRISE.md -Destination dist/CTF-Unlock/
+          Copy-Item -Recurse examples -Destination dist/CTF-Unlock/
+      - name: Archiver
+        shell: pwsh
+        run: Compress-Archive -Path dist/CTF-Unlock -DestinationPath dist/CTF-Unlock-Windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CTF-Unlock-Windows
+          path: dist/CTF-Unlock-Windows.zip
+          if-no-files-found: error

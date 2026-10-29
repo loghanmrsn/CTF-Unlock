@@ -1,6 +1,14 @@
-# Reprise · CTF Unlock v1
+# Reprise · CTF Unlock 1.1
 
 État au 29 octobre 2026. Projet neuf, créé dans `/workspace/CTF-Unlock`. Aucun ancien prototype utilisé. Les sources sont publiées sur [loghanmrsn/CTF-Unlock](https://github.com/loghanmrsn/CTF-Unlock), branche `main`. Le checkout local existant a été conservé et son commit initial `8d7f7d8` publié sur le dépôt GitHub vide après son ajout à la sélection de cet environnement.
+
+## Améliorations 1.1
+
+Réglages atomiques mémorisés (moteur/limites uniquement), conservation des réglages corrompus, copie du mot de passe validé avec effacement conditionnel du presse-papier, bilan JSON sans secret, protection des sources contre un export accidentel, aides selon le résultat, avertissement de masque trop grand pour le plafond, interface 820 × 620, conservation du résultat précédent lors d'une erreur de vérification moteur.
+
+Les nouvelles vérifications couvrent le redémarrage avec les réglages, la panne d'écriture atomique, les types invalides, la conservation d'un fichier de réglages corrompu, l'absence de secrets et de chemins complets dans le rapport, le presse-papier utilisateur préservé, le refus d'écrasement d'une liste et les commandes sur petit écran.
+
+Un workflow Windows a été ajouté ; son résultat sera consigné après exécution réelle. Les formats pris en charge restent ZIP/7z et le moteur reste 7-Zip.
 
 ## Ce qui fonctionne
 
@@ -26,7 +34,7 @@ CTF_UNLOCK_7ZIP=/workspace/ctf-tools/7zz QT_QPA_PLATFORM=offscreen \
   .venv/bin/python -m unittest discover -s tests -v
 ```
 
-**22 tests passent, aucun test ignoré lors de la validation Linux avec moteur présent**, dont **5 tests de la vraie interface Qt**.
+**30 tests passent, aucun test ignoré lors de la validation Linux avec moteur présent**, dont **8 tests de la vraie interface Qt**.
 
 Contrôles :
 
