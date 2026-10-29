@@ -24,7 +24,9 @@ def wait_until(condition, timeout=12):
     deadline = time.monotonic() + timeout
     while not condition():
         APP.processEvents()
-        QTest.qWait(10)
+        # Laisser le GIL aux travailleurs Python : QTest.qWait le conserve
+        # sur certaines versions Windows de PySide, contrairement à app.exec().
+        time.sleep(.01)
         if time.monotonic() > deadline:
             raise AssertionError('Délai Qt dépassé')
     APP.processEvents()
