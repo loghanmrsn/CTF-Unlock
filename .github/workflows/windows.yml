@@ -30,14 +30,15 @@ jobs:
         run: |
           @'
           import os, subprocess, sys
-          result = subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace', env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
-          print(result.stdout)
-          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as stream:
-              stream.write('## Tests Windows\n\n```text\n' + result.stdout + '\n```\n')
-          if result.returncode:
-              diagnostic = result.stdout[-24000:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-              print('::error title=Tests Windows::' + diagnostic)
-          sys.exit(result.returncode)
+          for attempt in range(1, 4):
+              result = subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace', env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
+              print(f'Windows validation {attempt}/3\n' + result.stdout)
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as stream:
+                  stream.write(f'## Tests Windows {attempt}/3\n\n```text\n' + result.stdout + '\n```\n')
+              if result.returncode:
+                  diagnostic = result.stdout[-24000:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                  print('::error title=Tests Windows::' + diagnostic)
+                  sys.exit(result.returncode)
           '@ | python -
       - name: Construire
         run: python -m PyInstaller --noconfirm --clean CTF-Unlock.spec
