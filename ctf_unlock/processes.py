@@ -48,6 +48,13 @@ class WindowsJob:
         limits.job_memory = memory_mb * 1024 * 1024
         configured = self.kernel.SetInformationJobObject(self.handle, 9, c.byref(limits), c.sizeof(limits))
         assigned = configured and self.kernel.AssignProcessToJobObject(self.handle, int(process._handle))
+        # Windows peut refuser l'attachement d'un programme déjà en cours de sortie,
+        # avant que GetExitCodeProcess ne signale effectivement sa fin.
+        if configured and not assigned and process.poll() is None:
+            try:
+                process.wait(timeout=.05)
+            except subprocess.TimeoutExpired:
+                pass
         if not configured or (not assigned and process.poll() is None):
             error = c.get_last_error()
             self.close()
