@@ -60,7 +60,7 @@ Cette livraison ne contient **pas d'exécutable Windows déjà vérifié**. Le l
 À vérifier sur une machine Windows :
 
 1. Lancer le BAT, vérifier le chemin de `7z.exe` et sa version dans Réglages.
-2. Exécuter les tests avec `CTF_UNLOCK_7ZIP` et `QT_QPA_PLATFORM=offscreen`. Les tests PID et `prlimit` Linux sont volontairement ignorés sur Windows.
+2. Exécuter les tests avec `CTF_UNLOCK_7ZIP` et `QT_QPA_PLATFORM=offscreen`. Les tests d’arrêt de processus et de mémoire s’exécutent aussi sur Windows (handle système et Job Object).
 3. Valider les Job Objects : application effective de la limite mémoire, annulation du moteur et nettoyage des enfants, y compris lors de la fermeture.
 4. Faire un essai interactif : dépôt de fichier, rendu/DPI, listes et masques, pause/reprise, résultats, diagnostics et chemins accentués.
 5. Construire avec PyInstaller sur Windows, copier tout `dist/CTF-Unlock`, installer 7-Zip sur la machine cible et vérifier le binaire dans les mêmes scénarios. Ne pas annoncer la réussite tant que cela n'a pas été effectué.

@@ -55,8 +55,6 @@ class CandidatesTests(unittest.TestCase):
             SevenZip('/not/a/real/7z.exe').version()
 
     def test_process_stop_closes_real_child(self):
-        if os.name != 'posix':
-            self.skipTest('Test PID Linux ; le Job Object Windows nécessite son runner.')
         with tempfile.TemporaryDirectory() as root:
             marker = Path(root) / 'pid'
             control = threading.Event()
@@ -73,11 +71,29 @@ class CandidatesTests(unittest.TestCase):
                 time.sleep(.01)
             self.assertTrue(marker.exists())
             pid = int(marker.read_text())
+            kernel, handle = None, None
+            if os.name == 'nt':
+                import ctypes
+                from ctypes import wintypes
+                kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+                kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+                kernel.OpenProcess.restype = wintypes.HANDLE
+                kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+                kernel.WaitForSingleObject.restype = wintypes.DWORD
+                kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+                handle = kernel.OpenProcess(0x100000, False, pid)
+                self.assertTrue(handle)
             control.set(); thread.join(3)
             self.assertFalse(thread.is_alive())
             self.assertEqual(error, ['annulé'])
-            with self.assertRaises(ProcessLookupError):
-                os.kill(pid, 0)
+            if handle:
+                try:
+                    self.assertEqual(kernel.WaitForSingleObject(handle, 2000), 0)
+                finally:
+                    kernel.CloseHandle(handle)
+            else:
+                with self.assertRaises(ProcessLookupError):
+                    os.kill(pid, 0)
 
 
 @unittest.skipUnless(ENGINE, '7-Zip absent : tests d’intégration non exécutés')
@@ -214,9 +230,7 @@ class RealArchiveTests(unittest.TestCase):
         self.assertEqual(result.outcome, Outcome.ERROR)
         self.assertIn('7-Zip absent', result.detail)
 
-    def test_memory_limit_is_enforced_linux(self):
-        if sys.platform != 'linux':
-            self.skipTest('Vérification prlimit Linux uniquement')
+    def test_memory_limit_is_enforced(self):
         result = run([sys.executable, '-c', 'import time;time.sleep(.1);x=bytearray(256*1024*1024)'], timeout=3, memory_mb=128)
         self.assertNotEqual(result.code, 0)
         self.assertIn('MemoryError', result.output)

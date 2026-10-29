@@ -21,7 +21,7 @@ jobs:
         shell: pwsh
         run: |
           $engine = Join-Path $env:ProgramFiles '7-Zip/7z.exe'
-          if (!(Test-Path $engine)) { throw '7-Zip absent du runner : aucun test d’archive ne sera simulé.' }
+          if (!(Test-Path $engine)) { throw "7-Zip is missing from the runner; archive tests cannot run." }
           "CTF_UNLOCK_7ZIP=$engine" >> $env:GITHUB_ENV
       - name: Tester le noyau et la vraie interface Qt
         env:

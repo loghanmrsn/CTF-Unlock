@@ -140,7 +140,7 @@ CTF_UNLOCK_7ZIP=/chemin/vers/7zz QT_QPA_PLATFORM=offscreen \
 
 `CTF_UNLOCK_7ZIP` est une variable **de test** ; dans l'application, sélectionner le moteur dans Réglages ou l'installer à un emplacement automatiquement détecté.
 
-**30 tests réussis sous Linux**, dont huit tests Qt réels. Sans moteur, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Deux tests propres à Linux (PID/limite mémoire) sont ignorés sur Windows. Le rendu Qt a été capturé et inspecté sous Linux. **Windows, son Job Object, le BAT et un exécutable Windows ne sont pas encore validés** : voir `REPRISE.md`.
+**30 tests réussis sous Linux**, dont huit tests Qt réels. Sans moteur, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Les tests d’arrêt de processus et de limite mémoire sont exécutables sous Linux et Windows ; le test Windows attend effectivement la terminaison du processus via son handle système. Le rendu Qt a été capturé et inspecté sous Linux. **Windows, son Job Object, le BAT et un exécutable Windows ne sont pas encore validés** : voir `REPRISE.md`.
 
 ## Construire un exécutable Windows
 
