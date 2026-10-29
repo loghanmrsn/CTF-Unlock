@@ -76,7 +76,7 @@ class InterfaceTests(unittest.TestCase):
         event = QDropEvent(QPointF(10, 10), Qt.DropAction.CopyAction, mime, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
         drop.dropEvent(event)
         wait_until(lambda: not self.window.busy)
-        self.assertEqual(self.window.file_path.text(), str(path))
+        self.assertEqual(Path(self.window.file_path.text()).resolve(), path.resolve())
         self.assertIn('ZIP', self.window.file_info.text())
         self.assertIn('endommagé', self.window.file_info.text())
 
