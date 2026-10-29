@@ -43,13 +43,15 @@ class Limits:
 
 @dataclass(frozen=True)
 class Progress:
-    attempted: int
+    attempted: int | None
     total: int | None
     elapsed: float
     phase: str
 
     @property
     def speed(self):
+        if self.attempted is None:
+            return None
         return self.attempted / self.elapsed if self.elapsed else 0
 
 
@@ -57,7 +59,7 @@ class Progress:
 class Result:
     outcome: Outcome
     detail: str
-    attempted: int = 0
+    attempted: int | None = 0
     elapsed: float = 0
     password: str | None = None
     technical: str = ''

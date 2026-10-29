@@ -185,3 +185,23 @@ class InterfaceTests(unittest.TestCase):
         self.window.method.setCurrentIndex(1)
         self.window.maximum.setValue(8)
         self.assertIn('ne couvre pas', self.window.mask_size.text())
+
+    @unittest.skipUnless(ENGINE and os.environ.get('CTF_UNLOCK_JOHN') and os.environ.get('CTF_UNLOCK_ZIP2JOHN'), 'John Jumbo non fourni : test Qt John non exécuté')
+    def test_real_john_selection_recovery_and_honest_statistics(self):
+        path = archive(self.root, aes=True)
+        words = self.root / 'john liste.txt'
+        words.write_text('wrong\nCTF42\n', encoding='utf-8')
+        self.window.john_path.setText(os.environ['CTF_UNLOCK_JOHN'])
+        self.window.zip2john_path.setText(os.environ['CTF_UNLOCK_ZIP2JOHN'])
+        self.window.backend.setCurrentIndex(1)
+        self.window.set_file(str(path)); wait_until(lambda: not self.window.busy)
+        self.window.wordlist.setText(str(words))
+        self.window.start()
+        self.assertFalse(self.window.pause_button.isEnabled())
+        wait_until(lambda: not self.window.busy)
+        self.assertEqual(self.window.result.outcome, Outcome.FOUND, self.window.result)
+        self.assertEqual(self.window.password.text(), 'CTF42')
+        self.assertIsNone(self.window.result.attempted)
+        self.assertIn('non disponibles', self.window.metrics.text())
+        self.assertIn('John', self.window.john_version.text())
+        self.assertNotIn('CTF42', self.window.journal.toPlainText())

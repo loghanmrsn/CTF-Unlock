@@ -23,6 +23,20 @@ jobs:
           $engine = Join-Path $env:ProgramFiles '7-Zip/7z.exe'
           if (!(Test-Path $engine)) { throw "7-Zip is missing from the runner; archive tests cannot run." }
           "CTF_UNLOCK_7ZIP=$engine" >> $env:GITHUB_ENV
+      - name: Préparer John Jumbo depuis la publication officielle Openwall
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'john-official.zip'
+          Invoke-WebRequest -Uri 'https://github.com/openwall/john-packages/releases/download/v1.9.1-ce/winX64_1_JtR.zip' -OutFile $archive
+          $actual = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          if ($actual -ne 'bab72da045d151c0482eb415ce172376323f58148ba395b51e0fe93ef23eb014') { throw 'John archive SHA256 mismatch' }
+          $destination = Join-Path $env:RUNNER_TEMP 'john-official'
+          Expand-Archive -Path $archive -DestinationPath $destination
+          $john = Join-Path $destination 'JtR/run/john.exe'
+          $extractor = Join-Path $destination 'JtR/run/zip2john.exe'
+          if (!(Test-Path $john) -or !(Test-Path $extractor)) { throw 'Official John tools missing' }
+          "CTF_UNLOCK_JOHN=$john" >> $env:GITHUB_ENV
+          "CTF_UNLOCK_ZIP2JOHN=$extractor" >> $env:GITHUB_ENV
       - name: Tester le noyau et la vraie interface Qt
         env:
           QT_QPA_PLATFORM: offscreen

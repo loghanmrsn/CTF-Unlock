@@ -22,7 +22,7 @@ class StorageTests(unittest.TestCase):
         self.store.save(preferences)
         self.assertEqual(self.store.load(), preferences)
         data = json.loads(self.path.read_text(encoding='utf-8'))
-        self.assertEqual(set(data), {'version', 'engine', 'limits'})
+        self.assertEqual(set(data), {'version', 'engine', 'limits', 'john', 'zip2john'})
         self.assertNotIn('password', data)
 
     def test_failed_atomic_save_keeps_old_preferences(self):

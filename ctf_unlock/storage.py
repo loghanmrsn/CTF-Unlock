@@ -38,10 +38,13 @@ def write_json(path: Path, data: dict) -> None:
 class Preferences:
     engine: str = ''
     limits: Limits = field(default_factory=Limits)
+    john: str = ''
+    zip2john: str = ''
 
     def validate(self):
-        if not isinstance(self.engine, str) or len(self.engine) > 4096 or '\x00' in self.engine:
-            raise ValueError('Chemin du moteur invalide dans les réglages.')
+        for path in (self.engine, self.john, self.zip2john):
+            if not isinstance(path, str) or len(path) > 4096 or '\x00' in path:
+                raise ValueError('Chemin du moteur invalide dans les réglages.')
         for name, value in asdict(self.limits).items():
             if name in ('candidates', 'threads', 'memory_mb'):
                 valid = type(value) is int
@@ -71,11 +74,12 @@ class PreferenceStore:
             if len(raw) > 16384:
                 raise ValueError('Fichier de réglages trop volumineux.')
             data = json.loads(raw.decode('utf-8'))
-            if not isinstance(data, dict) or type(data.get('version')) is not int or data['version'] != 1:
+            if not isinstance(data, dict) or type(data.get('version')) is not int or data['version'] not in (1, 2):
                 raise ValueError('Version des réglages non reconnue.')
-            if set(data) != {'version', 'engine', 'limits'} or not isinstance(data['limits'], dict):
+            expected = {'version', 'engine', 'limits'} | ({'john', 'zip2john'} if data['version'] == 2 else set())
+            if set(data) != expected or not isinstance(data['limits'], dict):
                 raise ValueError('Structure des réglages invalide.')
-            preferences = Preferences(data['engine'], Limits(**data['limits']))
+            preferences = Preferences(data['engine'], Limits(**data['limits']), data.get('john', ''), data.get('zip2john', ''))
             preferences.validate()
         except (ValueError, TypeError) as exc:
             self.read_only = True
@@ -87,7 +91,7 @@ class PreferenceStore:
         if self.read_only:
             raise ValueError('Les réglages existants sont protégés après une erreur de lecture. Corrigez ou déplacez le fichier puis relancez.')
         preferences.validate()
-        write_json(self.path, {'version': 1, 'engine': preferences.engine, 'limits': asdict(preferences.limits)})
+        write_json(self.path, {'version': 2, 'engine': preferences.engine, 'john': preferences.john, 'zip2john': preferences.zip2john, 'limits': asdict(preferences.limits)})
 
 
 def report_data(result: Result, source_name: str, engine_version: str) -> dict:
@@ -100,6 +104,6 @@ def report_data(result: Result, source_name: str, engine_version: str) -> dict:
         'outcome': str(result.outcome),
         'attempted': result.attempted,
         'elapsed_seconds': round(result.elapsed, 3),
-        'average_attempts_per_second': round(result.attempted / max(result.elapsed, .001), 3),
+        'average_attempts_per_second': round(result.attempted / max(result.elapsed, .001), 3) if result.attempted is not None else None,
         'password_included': False,
     }

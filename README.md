@@ -1,4 +1,4 @@
-# CTF Unlock 1.1 · its lizhy · Loghan
+# CTF Unlock 1.2 · its lizhy · Loghan
 
 **Un fichier. Des pistes.**
 
@@ -6,9 +6,24 @@ Application de bureau Python 3.12 + PySide6 pour analyser des archives de challe
 
 Le logiciel est utilisable, mais ne garantit aucune récupération. Il ne prétend pas ouvrir tous les fichiers.
 
-## Nouveautés de la version 1.1
+## John Jumbo CPU — nouveau moteur 1.2
 
-- Le chemin de 7-Zip et les limites sont mémorisés automatiquement, avec un bouton d'enregistrement manuel. Aucun chemin d'archive, liste, masque, candidat ou mot de passe n'est mémorisé.
+1. Installer John Jumbo depuis [Openwall](https://www.openwall.com/john/) ou les [publications du compte officiel Openwall](https://github.com/openwall/john-packages/releases). Ne pas installer le simple John « core » : il manque les formats ZIP nécessaires. Conserver tout le paquet avec ses bibliothèques et fichiers de configuration.
+2. Dans **Réglages**, sélectionner `john.exe` (Windows) ou `john` (Linux), et l'extracteur `zip2john.exe` / `zip2john` du même paquet. Les outils du PATH sont détectés, et le helper adjacent est proposé lors du choix de John. Cliquer sur **Vérifier Jumbo**.
+3. Garder également 7-Zip configuré : il reste obligatoire pour valider le résultat.
+4. Dans **Méthode**, choisir **John Jumbo CPU · ZIP** puis une liste ou un masque borné. Démarrer la recherche normalement.
+
+L'intégration John est limitée aux **ZIP ZipCrypto et ZIP AES**. Pour les 7z, sélectionner le moteur **7-Zip**. Les masques utilisent les mêmes caractères et bornes que le mode 7-Zip ; l'application prépare au plus le nombre de candidats autorisé. John travaille ensuite directement sur l'empreinte ZIP, sans retester tout le fichier pour chaque candidat. Les threads sont transmis via `OMP_NUM_THREADS` et les limites de durée/mémoire restent appliquées.
+
+**Compteurs honnêtes :** cette intégration ne lit pas encore de compteur fiable ni de vitesse en temps réel dans John. Ils sont affichés comme indisponibles et exportés comme `null`, jamais comme zéro essai inventé. Le temps écoulé et les phases restent visibles. La pause n'est pas implémentée pour John : le bouton est désactivé ; l'arrêt et la fermeture interrompent le groupe de processus.
+
+**Fichiers temporaires John :** une liste normalisée (64 Mio maximum), l'empreinte, la session et le pot de John sont placés dans un dossier temporaire propre à la tâche. Le pot peut contenir le mot de passe retrouvé en clair. Tout ce dossier est supprimé après succès, échec ou annulation normale. Un crash ou une coupure peut laisser des traces dans le dossier temporaire du système ; aucun effacement sécurisé n'est garanti. Ni candidats ni sortie brute de John ne sont affichés dans le journal ou exportés dans le bilan. L'application ne télécharge aucun moteur automatiquement et ne communique avec aucun service pendant la recherche.
+
+Chaque résultat John est revérifié par `7-Zip t`. Un candidat rejeté à cette étape n'est jamais présenté comme trouvé. Certains ZIP complexes, multi-mots-de-passe, empreintes trop volumineuses ou encodages de mot de passe peuvent rester non pris en charge. Les mots de passe non ASCII ne sont pas validés avec ce couple de moteurs ; les chemins avec espaces et accents font partie des tests.
+
+## Améliorations d’ergonomie (1.1)
+
+- Le chemin de 7-Zip et les limites sont mémorisés automatiquement, avec un bouton d'enregistrement manuel. Les chemins John/zip2john sont aussi mémorisés. Aucun chemin d'archive, liste, masque, candidat ou mot de passe n'est mémorisé dans les préférences.
 - **Copier** récupère un mot de passe réellement vérifié. Le presse-papier est effacé après 30 secondes ou à la fermeture, uniquement si son contenu est encore celui copié par CTF Unlock. Un autre contenu copié entre-temps est conservé. L'historique éventuel du presse-papier Windows est géré par Windows, pas par l'application.
 - **Exporter le bilan JSON** enregistre uniquement nom du fichier (sans chemin complet), moteur, issue, date UTC et statistiques. Aucun mot de passe ni diagnostic brut. L'export refuse de remplacer l'archive, la liste, le moteur ou les réglages, y compris via un lien vers le même fichier.
 - Des indications expliquent quoi faire après chaque résultat. Les masques signalent si le plafond de candidats ne couvre pas tout l'espace de recherche.
@@ -31,7 +46,9 @@ Les réglages sont stockés dans `%LOCALAPPDATA%\CTF-Unlock\preferences.json` so
 | 7z multi-volume, auto-extractibles | Non dans cette v1 | Hors périmètre ; choisir une archive simple |
 | PDF, Office, RAR, autres formats | Non | Architecture prévue pour d'autres adaptateurs |
 
-**Seul 7-Zip est intégré.** John the Ripper et Hashcat ne sont pas appelés et il n'existe pas d'accélération GPU dans cette version. La version du moteur choisi est vérifiée. La version réellement utilisée pour la validation Linux est **7-Zip (z) 25.01 x64** ; les autres versions ne sont pas toutes validées.
+**Deux moteurs sont intégrés :** 7-Zip pour ZIP/7z et John the Ripper **Jumbo CPU** pour ZIP (ZipCrypto et AES). Un mot de passe proposé par John doit réussir le test complet de 7-Zip avant d'être annoncé. Hashcat et l'accélération GPU ne sont pas intégrés.
+
+Versions Linux réellement testées : 7-Zip (z) **25.01 x64** et John **1.9.0-jumbo-1+bleeding-5184bc0b8c**, compilé depuis le dépôt officiel Openwall. Les autres versions ne sont pas toutes validées.
 
 Les signatures ZIP et 7z sont lues dans le fichier, indépendamment de l'extension. Les ZIP auto-extractibles ne sont pas recherchés à l'intérieur d'un exécutable. Les conteneurs Office basés sur ZIP peuvent être identifiés comme ZIP ; cela ne constitue pas une prise en charge du chiffrement Office.
 
@@ -81,7 +98,7 @@ Saisir de 1 à 64 caractères **distincts**, puis des longueurs de 1 à 8. Par e
 
 ### Pause et arrêt
 
-7-Zip ne propose pas de pause portable du test courant. **Mettre en pause** attend sa fin et bloque les prochains candidats ; l'état « En pause » confirme la pause effective. La durée maximale continue à s'écouler pendant la pause. **Reprendre** poursuit la même tâche, sans réinitialiser ses compteurs.
+7-Zip ne propose pas de pause portable du test courant. **Mettre en pause**, en mode 7-Zip, attend sa fin et bloque les prochains candidats ; l'état « En pause » confirme la pause effective. La durée maximale continue à s'écouler pendant la pause. **Reprendre** poursuit la même tâche, sans réinitialiser ses compteurs.
 
 **Arrêter** termine le processus moteur et nettoie son groupe. Fermer la fenêtre demande également cet arrêt et attend la fin du travail avant de quitter. Une seule tâche et un seul processus moteur fonctionnent à la fois.
 
@@ -91,10 +108,10 @@ Saisir de 1 à 64 caractères **distincts**, puis des longueurs de 1 à 8. Par e
 - Délai par opération moteur : 0,1 seconde à la durée totale. Un test complet qui dépasse ce délai rend la recherche **incomplète** ; il ne prouve pas que le candidat est faux.
 - Nombre d'essais : 1 à 1 000 000 maximum. Une recherche arrêtée par cette borne est distinguée d'une liste réellement épuisée.
 - Threads 7-Zip : 1 à 4, transmis par `-mmt`. Ce n'est pas un plafond global de pourcentage CPU.
-- Mémoire **du moteur** : 128 à 4096 Mio. Windows utilise un Job Object avec limite mémoire totale et destruction des enfants à la fermeture. Linux utilise `prlimit(RLIMIT_AS)` et un groupe de processus. Ces mécanismes sont configurés juste après la création du processus. La mémoire de l'interface Qt n'est pas incluse. Une limite insuffisante peut empêcher l'ouverture d'une archive même avec le bon mot de passe.
+- Mémoire **du moteur** : 128 à 4096 Mio. Windows utilise un Job Object avec limite mémoire totale et destruction des enfants à la fermeture. Le moteur Windows est créé suspendu, affecté au Job Object puis repris avant son premier code ; ses futurs enfants héritent de la limite. Linux utilise `prlimit(RLIMIT_AS)` et un groupe de processus. Sous Linux, le plafond est appliqué juste après la création du processus ; sous Windows, avant la reprise de son thread initial. La mémoire de l'interface Qt n'est pas incluse. Une limite insuffisante peut empêcher l'ouverture d'une archive même avec le bon mot de passe.
 - Sortie technique bornée à 1 Mio par appel, puis arrêt avec erreur ; métadonnées d'archive bornées à 16 Mio. ZIP : au plus 10 000 entrées annoncées. Si les limites système ne peuvent pas être appliquées, l'appel est interrompu avec une erreur explicite.
 
-Chaque candidat lance **un test complet de l'archive**. Ce moteur est volontairement simple et lent par rapport à un outil spécialisé utilisant des empreintes et un GPU. Il convient aux petits challenges et aux listes ciblées, pas à de grandes explorations exhaustives.
+En mode 7-Zip, chaque candidat lance **un test complet de l'archive**. John calcule sur une empreinte puis fait vérifier son résultat complet une seule fois. Ce moteur est volontairement simple et lent par rapport à un outil spécialisé utilisant des empreintes et un GPU. Il convient aux petits challenges et aux listes ciblées, pas à de grandes explorations exhaustives.
 
 ## Comprendre les résultats
 
@@ -113,7 +130,7 @@ Chaque candidat lance **un test complet de l'archive**. Ce moteur est volontaire
 
 Les opérations moteur sont uniquement `i` (version), `l` (liste) et `t` (test). Aucun appel d'extraction, modification, réparation ou suppression. Les chemins sont absolus et les commandes utilisent des **listes d'arguments, sans shell**. Le programme ne construit jamais une commande shell à partir du nom du fichier ou d'un candidat. Une modification externe de la taille/date du fichier pendant la recherche provoque un arrêt.
 
-Les fichiers originaux et les listes restent à leur emplacement. Les sorties temporaires du moteur sont automatiquement fermées ; aucun fichier n'est envoyé à un service, et l'application n'enregistre jamais les candidats ou mots de passe sur disque. Elle mémorise seulement moteur et limites ; un bilan statistique peut être exporté volontairement sans mot de passe ni diagnostic brut. Le mot de passe doit toutefois être fourni à 7-Zip comme argument de processus : il peut être visible pour les outils locaux ayant accès à la ligne de commande. Les chemins et les messages techniques peuvent apparaître dans l'interface. La lecture peut modifier la date d'accès gérée par le système, pas le contenu du fichier.
+Les fichiers originaux et les listes restent à leur emplacement. Les sorties temporaires du moteur sont automatiquement fermées ; aucun fichier n'est envoyé à un service, et en mode 7-Zip l'application n'enregistre pas de liste ou de pot. Le mode John utilise les fichiers temporaires décrits ci-dessus, supprimés après une fin normale de tâche. Les préférences ne contiennent que chemins des moteurs et limites ; un bilan peut être exporté sans mot de passe ni diagnostic brut. Le mot de passe doit toutefois être fourni à 7-Zip comme argument de processus : il peut être visible pour les outils locaux ayant accès à la ligne de commande. Les chemins et les messages techniques peuvent apparaître dans l'interface. La lecture peut modifier la date d'accès gérée par le système, pas le contenu du fichier.
 
 ## Tests
 
@@ -140,7 +157,9 @@ CTF_UNLOCK_7ZIP=/chemin/vers/7zz QT_QPA_PLATFORM=offscreen \
 
 `CTF_UNLOCK_7ZIP` est une variable **de test** ; dans l'application, sélectionner le moteur dans Réglages ou l'installer à un emplacement automatiquement détecté.
 
-**30 tests réussis sous Linux**, dont huit tests Qt réels. Sans moteur, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Les tests d’arrêt de processus et de limite mémoire sont exécutables sous Linux et Windows ; le test Windows attend effectivement la terminaison du processus via son handle système. Le rendu Qt a été capturé et inspecté sous Linux. **Windows, son Job Object, le BAT et un exécutable Windows ne sont pas encore validés** : voir `REPRISE.md`.
+**39 tests réussis sous Linux**, dont neuf tests Qt réels, avec John Jumbo et 7-Zip présents. Sans un moteur requis, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Les tests d’arrêt de processus et de limite mémoire sont exécutables sous Linux et Windows ; le test Windows attend effectivement la terminaison du processus via son handle système. Le rendu Qt a été capturé et inspecté sous Linux. **Windows, son Job Object, le BAT et un exécutable Windows ne sont pas encore validés** : voir `REPRISE.md`.
+
+Pour inclure les tests John, définir aussi `CTF_UNLOCK_JOHN` et `CTF_UNLOCK_ZIP2JOHN` vers les exécutables officiels. Sans eux, les tests John sont explicitement ignorés. Le workflow Windows télécharge le paquet officiel Openwall v1.9.1-ce et vérifie son SHA-256 fixé avant extraction ; il ne redistribue pas ce paquet dans l'artefact CTF Unlock.
 
 ## Construire un exécutable Windows
 
@@ -162,6 +181,7 @@ app.py                     point d'entrée Qt
 ctf_unlock/models.py       états, résultats et limites
 ctf_unlock/archives.py     signatures et métadonnées bornées
 ctf_unlock/engine.py       adaptateur 7-Zip, vérification réelle
+ctf_unlock/john.py         John Jumbo CPU ZIP et validation par 7-Zip
 ctf_unlock/processes.py    processus et limites système
 ctf_unlock/candidates.py   dictionnaire progressif et masque
 ctf_unlock/tasks.py        recherche, pause, annulation

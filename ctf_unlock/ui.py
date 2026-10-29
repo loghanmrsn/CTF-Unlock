@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBo
 from .archives import inspect
 from .candidates import Dictionary, Mask
 from .engine import SevenZip, find_7zip
+from .john import JohnJumbo, find_john
 from .models import Limits, Outcome, Progress, Result
 from .tasks import Control, recover
 from .storage import Preferences, PreferenceStore, report_data, write_json
@@ -139,7 +140,7 @@ class MainWindow(QMainWindow):
         self.task_list = None
         self.task_engine = ''
         self.clipboard_secret = None
-        self.setWindowTitle('CTF Unlock 1.1 · its lizhy')
+        self.setWindowTitle('CTF Unlock 1.2 · its lizhy')
         self.resize(1100, 820)
         self.setMinimumSize(820, 620)
         self.pool = QThreadPool(self)
@@ -226,6 +227,8 @@ class MainWindow(QMainWindow):
         for widget in (self.seconds, self.cap, self.threads, self.memory, self.attempt_time):
             widget.valueChanged.connect(lambda: self.preference_timer.start())
         self.engine_path.textChanged.connect(lambda: self.preference_timer.start())
+        self.john_path.textChanged.connect(lambda: self.preference_timer.start())
+        self.zip2john_path.textChanged.connect(lambda: self.preference_timer.start())
         self.engine_path.textChanged.connect(lambda: self.engine_version.setText('Moteur modifié : version à vérifier.'))
         self.navigate(0)
         if self.preference_error:
@@ -265,6 +268,12 @@ class MainWindow(QMainWindow):
 
     def build_method_page(self):
         self.method_panel, layout = self.page('Une piste à la fois')
+        self.backend = QComboBox()
+        self.backend.addItems(['7-Zip · ZIP et 7z', 'John Jumbo CPU · ZIP, vérification finale par 7-Zip'])
+        layout.addWidget(self.backend)
+        self.backend_note = text('7-Zip : test complet de chaque candidat. Pause entre deux essais.', 'muted')
+        layout.addWidget(self.backend_note)
+        self.backend.currentIndexChanged.connect(lambda index: self.backend_note.setText('John : ZIP uniquement, pas de pause ni compteur fiable. Liste et pot temporaires supprimés en fin de tâche. 7-Zip reste nécessaire pour valider le résultat.' if index else '7-Zip : test complet de chaque candidat. Pause entre deux essais.'))
         self.method = QComboBox()
         self.method.addItems(['Liste de mots de passe', 'Masque borné'])
         layout.addWidget(self.method)
@@ -300,7 +309,7 @@ class MainWindow(QMainWindow):
         self.methods.addWidget(mask)
         layout.addWidget(self.methods)
         self.method.currentIndexChanged.connect(self.methods.setCurrentIndex)
-        layout.addWidget(text('7-Zip vérifie l’archive entière pour chaque candidat.\nCe mode convient aux petites listes ciblées ; pas d’accélération GPU.', 'muted'))
+        layout.addWidget(text('Choisissez le moteur ci-dessus. John cherche sur une empreinte ZIP ; son résultat est ensuite testé sur l’archive entière par 7-Zip. Aucun mode GPU.', 'muted'))
         self.update_mask()
 
     def build_settings_page(self, engine_path):
@@ -312,9 +321,26 @@ class MainWindow(QMainWindow):
         controls.addWidget(button('Sélectionner le moteur…', self.choose_engine))
         controls.addWidget(button('Détecter / vérifier la version', self.check_engine))
         layout.addLayout(controls)
-        self.engine_version = text('Version non vérifiée. Seul 7-Zip est intégré en v1.', 'muted')
+        self.engine_version = text('Version 7-Zip non vérifiée.', 'muted')
         layout.addWidget(self.engine_version)
+        john_form = QFormLayout()
+        detected_john, detected_helper = find_john()
+        self.john_path = QLineEdit(self.saved.john or detected_john)
+        self.john_path.setPlaceholderText('Optionnel : john.exe / john (Jumbo)')
+        self.zip2john_path = QLineEdit(self.saved.zip2john or detected_helper)
+        self.zip2john_path.setPlaceholderText('zip2john.exe / zip2john, même distribution officielle')
+        john_form.addRow('John Jumbo', self.john_path)
+        john_form.addRow('Extracteur ZIP', self.zip2john_path)
+        layout.addLayout(john_form)
+        john_controls = QHBoxLayout()
+        john_controls.addWidget(button('Choisir John…', self.choose_john))
+        john_controls.addWidget(button('Choisir zip2john…', self.choose_extractor))
+        john_controls.addWidget(button('Vérifier Jumbo', self.check_john))
+        layout.addLayout(john_controls)
+        self.john_version = text('John optionnel : non vérifié. Téléchargement manuel depuis Openwall uniquement.', 'muted')
+        layout.addWidget(self.john_version)
         form = QFormLayout()
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.seconds = QSpinBox(); self.seconds.setRange(1, 3600); self.seconds.setValue(60)
         self.cap = QSpinBox(); self.cap.setRange(1, 1000000); self.cap.setValue(10000)
         self.threads = QSpinBox(); self.threads.setRange(1, 4); self.threads.setValue(1)
@@ -328,7 +354,7 @@ class MainWindow(QMainWindow):
         self.cap.valueChanged.connect(self.update_mask)
         layout.addWidget(button('Enregistrer les réglages', self.save_preferences))
         layout.addWidget(text('Le moteur et les limites sont mémorisés localement. Aucun fichier analysé, liste ou mot de passe n’est enregistré.', 'muted'))
-        layout.addWidget(text('Une seule tâche et un seul processus moteur à la fois.\nLa mémoire limite le moteur, pas l’interface Qt. La pause attend la fin de l’essai courant.', 'muted'))
+        layout.addWidget(text('Une seule tâche et un seul processus moteur à la fois.\nLa mémoire limite le moteur, pas Qt. 7-Zip : pause entre essais. John : arrêt uniquement.', 'muted'))
 
     def build_results_page(self):
         _, layout = self.page('Résultats réels')
@@ -404,6 +430,32 @@ class MainWindow(QMainWindow):
         if path:
             self.engine_path.setText(path)
 
+    def choose_john(self):
+        path, _ = QFileDialog.getOpenFileName(self, 'Choisir John Jumbo officiel')
+        if path:
+            self.john_path.setText(path)
+            helper = Path(path).with_name('zip2john.exe' if Path(path).suffix.lower() == '.exe' else 'zip2john')
+            if helper.is_file():
+                self.zip2john_path.setText(str(helper))
+
+    def choose_extractor(self):
+        path, _ = QFileDialog.getOpenFileName(self, 'Choisir zip2john officiel')
+        if path:
+            self.zip2john_path.setText(path)
+
+    def john(self):
+        return JohnJumbo(self.john_path.text(), self.zip2john_path.text(), SevenZip(self.engine_path.text()))
+
+    def check_john(self):
+        if self.busy:
+            return
+        try:
+            limits = self.limits()
+        except ValueError as exc:
+            self.error(str(exc)); return
+        engine = self.john()
+        self.begin(lambda progress: {'john_version': engine.version(limits, lambda: 'Arrêt demandé.' if self.control.cancelled.is_set() else None)})
+
     def limits(self):
         limits = Limits(self.seconds.value(), self.cap.value(), self.threads.value(), self.memory.value(), self.attempt_time.value())
         limits.validate()
@@ -420,7 +472,7 @@ class MainWindow(QMainWindow):
     def mask(self):
         return Mask(self.alphabet.text(), self.minimum.value(), self.maximum.value())
 
-    def begin(self, action, recovering=False):
+    def begin(self, action, recovering=False, pausable=True):
         if self.busy:
             return
         self.busy = True
@@ -430,7 +482,8 @@ class MainWindow(QMainWindow):
         self.control = Control()
         self.stop_button.setEnabled(True)
         self.start_button.setEnabled(False)
-        self.pause_button.setEnabled(recovering)
+        self.pause_button.setEnabled(recovering and pausable)
+        self.pause_button.setToolTip('Pause entre deux essais.' if pausable else 'Pause non implémentée pour John. Utilisez Arrêter pour interrompre la tâche.')
         self.pause_button.setText('Mettre en pause')
         for panel in (self.file_panel, self.method_panel, self.settings_panel):
             panel.setEnabled(False)
@@ -504,10 +557,14 @@ class MainWindow(QMainWindow):
         self.result_title.setText('Recherche en cours…')
         self.log('Nouvelle recherche locale. L’original ne sera ni extrait, ni modifié.')
         self.navigate(3)
-        self.begin(lambda progress: recover(path, source, engine, limits, self.control, progress), recovering=True)
+        if self.backend.currentIndex():
+            john = self.john()
+            self.begin(lambda progress: john.recover(path, source, limits, self.control, progress), recovering=True, pausable=False)
+        else:
+            self.begin(lambda progress: recover(path, source, engine, limits, self.control, progress), recovering=True)
 
     def toggle_pause(self):
-        if self.busy and self.recovering:
+        if self.busy and self.recovering and self.pause_button.isEnabled():
             paused = not self.control.paused.is_set()
             self.control.pause(paused)
             self.pause_button.setText('Reprendre' if paused else 'Mettre en pause')
@@ -523,7 +580,10 @@ class MainWindow(QMainWindow):
         self.phase.setText(progress.phase)
         if progress.phase.startswith('Moteur vérifié : '):
             self.task_engine = progress.phase.removeprefix('Moteur vérifié : ')
-            self.engine_version.setText(self.task_engine)
+            if self.backend.currentIndex():
+                self.john_version.setText(self.task_engine)
+            else:
+                self.engine_version.setText(self.task_engine)
             self.log(progress.phase)
         if progress.total:
             self.bar.setRange(0, 1000)
@@ -534,6 +594,9 @@ class MainWindow(QMainWindow):
         if self.busy:
             elapsed = time.monotonic() - self.started
             attempts = self.latest.attempted
+            if attempts is None:
+                self.metrics.setText(f'Compteur et vitesse non disponibles (John) · {elapsed:.1f} s')
+                return
             total = f' / {self.latest.total:,}' if self.latest.total else ' / total inconnu'
             self.metrics.setText(f'{attempts:,}{total} essais · {attempts / max(elapsed, .001):.2f} essai/s · {elapsed:.1f} s')
 
@@ -573,7 +636,10 @@ class MainWindow(QMainWindow):
             self.result_title.style().unpolish(self.result_title)
             self.result_title.style().polish(self.result_title)
             self.phase.setText(str(value.outcome))
-            self.metrics.setText(f'{value.attempted:,} essais · {value.attempted / max(value.elapsed, .001):.2f} essai/s · {value.elapsed:.1f} s')
+            if value.attempted is None:
+                self.metrics.setText(f'Compteur et vitesse non disponibles (John) · {value.elapsed:.1f} s')
+            else:
+                self.metrics.setText(f'{value.attempted:,} essais · {value.attempted / max(value.elapsed, .001):.2f} essai/s · {value.elapsed:.1f} s')
             self.password.setText(value.password or '')
             self.log(f'{value.outcome}\n{value.detail}')
             self.details.setPlainText(value.technical or 'Pas de diagnostic technique supplémentaire. Les arguments contenant les mots de passe ne sont pas journalisés.')
@@ -581,6 +647,9 @@ class MainWindow(QMainWindow):
                 self.bar.setValue(1000)
         else:
             self.phase.setText('Analyse terminée.')
+            if 'john_version' in value:
+                self.john_version.setText(value['john_version'])
+                self.log(value['john_version'])
             if 'version' in value:
                 self.engine_version.setText(value['version'])
                 self.log('Moteur vérifié : ' + value['version'])
@@ -608,7 +677,7 @@ class MainWindow(QMainWindow):
                 self.error('Les réglages sont protégés après une erreur de lecture : ' + str(self.store.path))
             return False
         try:
-            self.store.save(Preferences(self.engine_path.text(), self.limits()))
+            self.store.save(Preferences(self.engine_path.text(), self.limits(), self.john_path.text(), self.zip2john_path.text()))
         except (OSError, ValueError) as exc:
             self.error(f'Sauvegarde des réglages impossible : {exc}')
             return False
@@ -638,7 +707,7 @@ class MainWindow(QMainWindow):
         if not path:
             return
         target = Path(path).with_suffix('.json').resolve()
-        protected = [self.task_file, self.task_list, self.store.path, Path(self.engine_path.text())]
+        protected = [self.task_file, self.task_list, self.store.path, Path(self.engine_path.text()), Path(self.john_path.text()), Path(self.zip2john_path.text())]
         if self.file_path.text():
             protected.append(Path(self.file_path.text()))
         if self.wordlist.text():
