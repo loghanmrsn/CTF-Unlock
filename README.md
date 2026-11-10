@@ -1,11 +1,5 @@
 # CTF Unlock 1.2 · its lizhy 
 
-**Un fichier. Des pistes.**
-
-Application de bureau Python 3.12 + PySide6 pour analyser des archives de challenges CTF et tenter des mots de passe **hors ligne**, sur des fichiers pour lesquels vous disposez d'une autorisation. Thème noir, blanc et argent inspiré du [portfolio](https://loghanmrsn.github.io/Portfolio/).
-
-Le logiciel est utilisable, mais ne garantit aucune récupération. Il ne prétend pas ouvrir tous les fichiers.
-
 ## John Jumbo CPU — nouveau moteur 1.2
 
 1. Installer John Jumbo depuis [Openwall](https://www.openwall.com/john/) ou les [publications du compte officiel Openwall](https://github.com/openwall/john-packages/releases). Ne pas installer le simple John « core » : il manque les formats ZIP nécessaires. Conserver tout le paquet avec ses bibliothèques et fichiers de configuration.
