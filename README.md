@@ -1,4 +1,4 @@
-# CTF Unlock 1.2 · its lizhy · Loghan
+# CTF Unlock 1.2 · its lizhy 
 
 **Un fichier. Des pistes.**
 
