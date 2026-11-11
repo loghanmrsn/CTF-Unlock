@@ -1,12 +1,36 @@
-# Migration en cours · Python 3.14
+# Reprise · CTF Unlock 1.4
 
-Le projet cible désormais **Python 3.14 64 bits**, avec **PySide6 6.12.0** et **PyInstaller 6.22.3**. Le BAT vérifie la version et refuse un ancien `.venv` sans le supprimer ; le renommer en `.venv-ancien` avant de relancer. Le workflow Windows cible aussi 3.14.
+État au **11 novembre 2026**. Cible : **Python 3.14 64 bits**. Sources : [loghanmrsn/CTF-Unlock](https://github.com/loghanmrsn/CTF-Unlock).
 
-Python **3.14.8** a été installé dans le nouvel environnement Linux et les imports PySide6/PyInstaller ont été vérifiés. La suite Linux a exécuté **39 tests : 33 réussis, 6 ignorés** faute de John Jumbo installé dans ce nouvel environnement, avec 7-Zip 25.01 et la vraie interface Qt. La validation Windows 3.14 reste à exécuter. Les résultats historiques ci-dessous concernent Python 3.12 et ne prouvent pas la compatibilité de la nouvelle version.
+## Ce qui est disponible
 
-Le nouveau brouillon ne contenait pas les ajouts locaux non publiés (outils texte/images et inspecteur SQLite) de l'ancien environnement. Le dépôt GitHub a été recloné en préservant ses modifications de README ; ces ajouts doivent être reconstruits et testés avant d'être annoncés disponibles.
+John Jumbo CPU ZIP et 7-Zip ZIP/7z sont conservés. L'atelier ajoute des conversions de texte (César, ROT13, hex, Base64 standard, binaire, URL, XOR avec clé connue), un inspecteur d'images (pipette, couleur sRGB, métadonnées, canaux, plans de bits, extraction bornée, nouveau PNG) et un inspecteur SQLite local en lecture seule (schéma, tables/vues, filtre, SELECT/WITH…SELECT, pagination, exports JSON/CSV de la sélection ou de la page).
 
----
+SQLite utilise la bibliothèque standard, sans dépendance supplémentaire ni serveur : copie temporaire du fichier et du WAL, contrôle des changements, connexion read-only sur cette copie, authorizer qui refuse écritures/ATTACH/extensions, délais et volumes bornés. Les originaux et leurs sidecars restent intacts ; le test WAL contrôle aussi les octets du SHM. Les dumps SQL ne sont pas exécutés. Les bases chiffrées, bases distantes et lignes supprimées ne sont pas récupérées. Voir les limites exactes et exemples dans [examples/OUTILS.md](examples/OUTILS.md).
+
+Les outils texte/images/SQLite non publiés dans l'ancien environnement étaient absents de ce nouveau brouillon. Ils ont été reconstruits à partir du dépôt GitHub, sans réappliquer les changements du Portfolio ou d'autres projets. Les modifications de README présentes sur GitHub ont été préservées.
+
+## Migration Python 3.14
+
+Dépendances : **PySide6 6.12.0**, **Pillow 13.0.0**, **PyInstaller 6.22.3** pour construire. Le BAT et le workflow Windows utilisent 3.14. Si `.venv` utilise encore une autre version, le BAT explique comment le renommer en `.venv-ancien`, sans le supprimer automatiquement. Le binaire PyInstaller inclut son propre Python ; l'utilisateur n'a pas à installer Python pour utiliser le paquet construit.
+
+La migration seule (commit `ae1130a`) a été validée sur [GitHub Actions Windows](https://github.com/loghanmrsn/CTF-Unlock/actions/runs/43013214159) avec Python **3.14.10** : **39 tests réussis trois fois**, aucun ignoré, John officiel et 7-Zip réels ; construction PyInstaller et démarrage hors écran du `.exe` réussis. Cette exécution précède l'ajout de l'atelier 1.4.
+
+## Validation actuelle de l'atelier
+
+Sous Linux : Python **3.14.8**, PySide6 **6.12.0**, Pillow **13.0.0**, 7-Zip **25.01**. **65 tests exécutés : 59 réussis et 6 ignorés** parce que John Jumbo n'est pas installé dans ce nouvel environnement. Les tests non ignorés comprennent **15 tests de la vraie interface Qt** ; un test Qt John supplémentaire attend le moteur Windows/une installation locale.
+
+Nouveaux tests : vecteurs de conversion et erreurs strictes, sorties binaires sans remplacement silencieux ; métadonnées PNG/JPEG, transparence, palette, plans de bits et extraction connue ; nouveau PNG et refus d'écraser ; signatures SQLite, schéma/index/relations/vues, identifiants avec guillemets et chemins Unicode/espaces/# (et ? sous Linux), filtres littéraux et entrées d'injection, pagination, refus des écritures/extensions, exports BLOB/NULL/TEXT invalide, CSV, WAL sans modification des sidecars, erreurs/limites et annulation. Les tests Qt exercent réellement boutons, navigation, dépôt d'image, pipette, transformation, pagination et export sélectionné ; un timer démontre la réactivité pendant une vraie requête SQL annulée.
+
+Les captures des trois onglets ont été inspectées hors écran sous Linux ; le grand espace vide initial de l'onglet texte a été corrigé. Le paquet PyInstaller Linux 1.4 a été construit et son démarrage hors écran vérifié pendant 5 secondes avec le thème présent. La validation finale Windows 1.4 sera ajoutée après le workflow correspondant. Ne pas confondre la validation de la migration seule avec celle de ces nouveaux outils.
+
+## Prochaines vérifications
+
+Après les tests automatiques : essai manuel sur un bureau Windows du BAT, du rendu/DPI, du glisser-déposer natif, du presse-papier, de la fermeture du binaire et des avertissements SmartScreen. Aucun binaire signé. Les moteurs officiels restent externes ; aucune accélération Hashcat/GPU, PDF ou Office annoncée.
+
+## Historique validé sous Python 3.12
+
+Les notes suivantes concernent la version 1.2, avant migration ; elles sont conservées pour reprendre l'historique sans en attribuer les résultats à Python 3.14.
 
 # Reprise · CTF Unlock 1.2
 

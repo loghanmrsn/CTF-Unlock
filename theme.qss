@@ -51,3 +51,9 @@ QToolTip { color: #eee; background: #242424; }
 QLabel#hero { font-size: 32px; }
 QLabel#status { min-height: 22px; }
 QFormLayout { spacing: 10px; }
+QTabWidget::pane { border: 1px solid #393939; border-radius: 8px; }
+QTabBar::tab { background: #202020; color: #aaa; border: 1px solid #393939; padding: 10px 12px; }
+QTabBar::tab:selected { background: #343434; color: white; border-bottom-color: #dedede; }
+QTableWidget { background: #121212; alternate-background-color: #202020; gridline-color: #393939; selection-background-color: #4a4a4a; selection-color: white; }
+QHeaderView::section { background: #292929; color: #ededeb; border: 1px solid #414141; padding: 6px; }
+QTableCornerButton::section { background: #292929; border: 1px solid #414141; }

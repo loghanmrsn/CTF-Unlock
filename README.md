@@ -1,4 +1,20 @@
-# CTF Unlock 1.2 · its lizhy 
+# CTF Unlock 1.4 · its lizhy
+
+## Atelier CTF et Python 3.14 (1.4)
+
+Le projet utilise **Python 3.14 64 bits**, **PySide6 6.12.0** et **Pillow 13.0.0**. Construction : **PyInstaller 6.22.3**. Les moteurs John/7-Zip restent disponibles dans les sections existantes.
+
+Dans **Outils CTF**, trois onglets sont disponibles :
+
+- **Texte / encodages** : César (décalage choisi ou 26 variantes), ROT13, hexadécimal, Base64 standard, binaire, URL et XOR avec clé hexadécimale connue. Copie et réutilisation du résultat ; octets non UTF-8 affichés en hexadécimal. Entrée 64 Kio, 4 Kio pour les 26 variantes. Aucune langue ou clé détectée automatiquement.
+- **Images / couleurs** : sélection ou dépôt d'un PNG/JPEG/BMP/GIF/WebP, métadonnées bornées, première image uniquement ; pipette du pixel original, RGB/HSV, luminance et contrastes sRGB, palette/histogramme échantillonnés, canaux RGBA et plans de bits. Extraction de bits explicite, jusqu'à 64 Kio ; export de la dernière vue appliquée vers un nouveau PNG. Image limitée à 20 Mio et 4 millions de pixels ; pas d'orientation EXIF, gestion ICC, OCR ou décryptage automatique.
+- **SQLite / SQL** : ouvrir une base locale reconnue par signature, consulter tables/vues, colonnes, index et clés étrangères, filtrer les valeurs, exécuter SELECT/WITH…SELECT et paginer les résultats. Export JSON/CSV des lignes sélectionnées ou de la page. Lecture sur copie temporaire de la base et du WAL : original jamais ouvert en écriture, aucun SHM créé à côté. Les écritures, extensions et ATTACH sont refusés. Les noms de colonnes peuvent donner des indices, sans confirmer un secret.
+
+SQL : base 256 Mio, WAL 64 Mio, 128 objets/colonnes, 5 s par requête, page de 500 lignes/10 000 cellules/2 Mio, cellule 1 Mio. Les fichiers changés doivent être réanalysés ; un journal rollback non vide entraîne un refus. Pas de connexion serveur, dump SQL, SQLCipher ou récupération de lignes supprimées. Les résultats SQL peuvent contenir des informations sensibles : les exports sont déclenchés explicitement, dans un nouveau fichier. JSON conserve types NULL/octet, CSV est destiné à la consultation.
+
+Les traitements utilisent un worker pour garder Qt réactif, avec arrêt coopératif. Aucun fichier de travail, texte, image, requête SQL ou résultat n'est mémorisé dans les préférences. Des copies temporaires SQLite sont supprimées à la fin normale ; un crash peut laisser des traces locales. Les sources et les exports existants ne sont jamais écrasés par les nouveaux outils.
+
+Exemples reproductibles : [examples/OUTILS.md](examples/OUTILS.md), `examples/image-demo.png` et `examples/demo.sqlite`.
 
 ## John Jumbo CPU — nouveau moteur 1.2
 
@@ -51,7 +67,7 @@ Les signatures ZIP et 7z sont lues dans le fichier, indépendamment de l'extensi
 1. Installer **Python 3.14 64 bits**, avec le lanceur `py`, depuis [python.org](https://www.python.org/).
 2. Installer **7-Zip** depuis son [site officiel](https://www.7-zip.org/). Aucun moteur n'est téléchargé automatiquement ou fourni dans ce ZIP.
 3. Extraire entièrement le projet dans un dossier accessible en écriture.
-4. Double-cliquer sur **Lancer-CTF-Unlock.bat**. Il crée `.venv`, vérifie Python 3.14, installe PySide6 puis lance l'application. Si un ancien `.venv` utilise Python 3.12, le renommer en `.venv-ancien` puis relancer le BAT ; ses fichiers ne sont jamais supprimés automatiquement.
+4. Double-cliquer sur **Lancer-CTF-Unlock.bat**. Il crée `.venv`, vérifie Python 3.14, installe PySide6 et Pillow puis lance l'application. Si un ancien `.venv` utilise Python 3.12, le renommer en `.venv-ancien` puis relancer le BAT ; ses fichiers ne sont jamais supprimés automatiquement.
 5. Dans **Réglages**, vérifier le moteur détecté. Au besoin, sélectionner `C:\Program Files\7-Zip\7z.exe`, puis cliquer sur **Détecter / vérifier la version**.
 
 L'installation Python nécessite Internet pour les dépendances ; l'analyse et les recherches ne font aucune requête réseau. Une fois les dépendances installées, démarrage sans vérification réseau :
@@ -60,7 +76,7 @@ L'installation Python nécessite Internet pour les dépendances ; l'analyse et l
 .venv\Scripts\python.exe app.py
 ```
 
-Si un ancien `.venv` utilise une autre version Python, le supprimer et relancer le BAT. Ne pas déplacer un environnement virtuel entre machines.
+Si un ancien `.venv` utilise une autre version Python, le renommer puis relancer le BAT. Ne pas déplacer un environnement virtuel entre machines.
 
 ## Essayer immédiatement
 
@@ -181,6 +197,11 @@ ctf_unlock/candidates.py   dictionnaire progressif et masque
 ctf_unlock/tasks.py        recherche, pause, annulation
 ctf_unlock/ui.py           interface Qt et travaux hors du thread GUI
 ctf_unlock/storage.py      réglages atomiques et bilans sans mot de passe
+ctf_unlock/text_tools.py   conversions de texte bornées
+ctf_unlock/image_tools.py  images, couleur et extraction de bits
+ctf_unlock/sqlite_tools.py lecture SQLite sur copie et exports
+ctf_unlock/sqlite_ui.py    interface de l'inspecteur SQLite
+ctf_unlock/toolbox_ui.py   onglets de l'atelier CTF
 theme.qss                  thème noir, blanc et argent
 tests/                     validations unitaires, moteurs et interface
 examples/                  archives connues et liste de démonstration

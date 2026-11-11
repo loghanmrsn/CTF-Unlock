@@ -6,8 +6,10 @@ from PySide6.QtCore import QObject, Property, QPropertyAnimation, QRunnable, QSi
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog,
     QFormLayout, QFrame, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
-    QProgressBar, QPushButton, QScrollArea, QSpinBox, QStackedWidget, QVBoxLayout, QWidget)
+    QProgressBar, QPushButton, QScrollArea, QSizePolicy, QSpinBox, QStackedWidget, QVBoxLayout, QWidget)
 
+from .toolbox_ui import Toolbox
+from .processes import Aborted
 from .archives import inspect
 from .candidates import Dictionary, Mask
 from .engine import SevenZip, find_7zip
@@ -121,6 +123,8 @@ class Worker(QRunnable):
     def run(self):
         try:
             result = self.action(self.signals.progress.emit)
+        except Aborted as exc:
+            result = Result(Outcome.INTERRUPTED, str(exc))
         except Exception as exc:
             result = Result(Outcome.ERROR, str(exc))
         self.signals.done.emit(result)
@@ -140,13 +144,14 @@ class MainWindow(QMainWindow):
         self.task_list = None
         self.task_engine = ''
         self.clipboard_secret = None
-        self.setWindowTitle('CTF Unlock 1.2 · its lizhy')
+        self.setWindowTitle('CTF Unlock 1.4 · its lizhy')
         self.resize(1100, 820)
         self.setMinimumSize(820, 620)
         self.pool = QThreadPool(self)
         self.pool.setMaxThreadCount(1)
         self.busy = False
         self.recovering = False
+        self.tool_active = False
         self.closing = False
         self.control = Control()
         self.result = None
@@ -166,7 +171,7 @@ class MainWindow(QMainWindow):
         nav.addWidget(text('L’ATELIER HORS LIGNE', 'micro'))
         nav.addSpacing(35)
         self.tabs = []
-        for index, title in enumerate(['01   Fichier', '02   Méthode', '03   Réglages', '04   Résultats']):
+        for index, title in enumerate(['01   Fichier', '02   Méthode', '03   Réglages', '04   Résultats', '05   Outils CTF']):
             tab = button(title, lambda checked=False, i=index: self.navigate(i), 'nav')
             tab.setCheckable(True)
             self.tabs.append(tab)
@@ -180,9 +185,9 @@ class MainWindow(QMainWindow):
         layout.setSpacing(14)
         layout.addWidget(text('OBSERVER. ESSAYER. VÉRIFIER.', 'micro'))
         layout.addWidget(text('Un fichier. Des pistes.', 'hero'))
-        layout.addWidget(text('Récupération locale pour vos challenges CTF et fichiers autorisés.\nZIP et 7z uniquement · aucun résultat garanti.', 'muted'))
+        layout.addWidget(text('Récupération locale pour vos challenges CTF et fichiers autorisés.\nArchives ZIP/7z · texte, images et SQLite local · aucun résultat garanti.', 'muted'))
         self.pages = QStackedWidget()
-        scroll = QScrollArea()
+        self.page_scroll = scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setWidget(self.pages)
@@ -191,6 +196,12 @@ class MainWindow(QMainWindow):
         self.build_method_page()
         self.build_settings_page(engine_path)
         self.build_results_page()
+        self.tools_panel, tool_layout = self.page('Outils CTF')
+        self.toolbox = Toolbox()
+        self.toolbox.requested.connect(self.run_tool)
+        self.toolbox.failed.connect(self.error)
+        tool_layout.addWidget(self.toolbox)
+        tool_layout.addStretch(1)
         self.phase = text('Choisissez une archive et vérifiez le moteur dans Réglages.', 'status')
         self.phase.setMaximumHeight(58)
         layout.addWidget(self.phase)
@@ -238,6 +249,12 @@ class MainWindow(QMainWindow):
 
     def navigate(self, index):
         self.pages.setCurrentIndex(index)
+        for i in range(self.pages.count()):
+            self.pages.widget(i).setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred if i == index else QSizePolicy.Policy.Ignored)
+        self.pages.updateGeometry()
+        self.page_scroll.verticalScrollBar().setValue(0)
+        self.start_button.setVisible(index != 4)
+        self.pause_button.setVisible(index != 4)
         for i, tab in enumerate(self.tabs):
             tab.setChecked(i == index)
 
@@ -487,13 +504,34 @@ class MainWindow(QMainWindow):
         self.pause_button.setEnabled(recovering and pausable)
         self.pause_button.setToolTip('Pause entre deux essais.' if pausable else 'Pause non implémentée pour John. Utilisez Arrêter pour interrompre la tâche.')
         self.pause_button.setText('Mettre en pause')
-        for panel in (self.file_panel, self.method_panel, self.settings_panel):
+        for panel in (self.file_panel, self.method_panel, self.settings_panel, self.tools_panel):
             panel.setEnabled(False)
         self.bar.setRange(0, 0)
         self.worker = Worker(action)
         self.worker.signals.progress.connect(self.on_progress)
         self.worker.signals.done.connect(self.done)
         self.pool.start(self.worker)
+
+    def run_tool(self, operation):
+        if self.busy:
+            return
+        self.tool_active = True
+        def action(progress):
+            def abort():
+                if self.control.cancelled.is_set():
+                    return 'Arrêt demandé.'
+                if time.monotonic() - self.started >= 30:
+                    return 'Limite de traitement de 30 secondes atteinte.'
+                return None
+            reason = abort()
+            if reason:
+                raise Aborted(reason)
+            value = operation(abort)
+            reason = abort()
+            if reason:
+                raise Aborted(reason)
+            return {'toolkit': value}
+        self.begin(action)
 
     def check_engine(self):
         if self.busy:
@@ -595,6 +633,9 @@ class MainWindow(QMainWindow):
     def refresh_metrics(self):
         if self.busy:
             elapsed = time.monotonic() - self.started
+            if self.tool_active:
+                self.metrics.setText(f'Traitement local · {elapsed:.1f} s')
+                return
             attempts = self.latest.attempted
             if attempts is None:
                 self.metrics.setText(f'Compteur et vitesse non disponibles (John) · {elapsed:.1f} s')
@@ -604,9 +645,11 @@ class MainWindow(QMainWindow):
 
     def done(self, value):
         was_recovering = self.recovering
+        was_tool = self.tool_active
+        self.tool_active = False
         self.busy = False
         self.recovering = False
-        for panel in (self.file_panel, self.method_panel, self.settings_panel):
+        for panel in (self.file_panel, self.method_panel, self.settings_panel, self.tools_panel):
             panel.setEnabled(True)
         self.start_button.setEnabled(True)
         self.stop_button.setEnabled(False)
@@ -615,7 +658,13 @@ class MainWindow(QMainWindow):
         self.bar.setValue(0)
         if isinstance(value, Result):
             if not was_recovering:
-                self.error(value.detail)
+                if was_tool:
+                    self.toolbox.on_error(value.detail, value.outcome == Outcome.INTERRUPTED)
+                if value.outcome == Outcome.INTERRUPTED:
+                    self.phase.setText('Traitement interrompu : ' + value.detail)
+                    self.log('Traitement interrompu : ' + value.detail)
+                else:
+                    self.error(value.detail)
                 if self.closing:
                     self.close()
                 return
@@ -649,6 +698,10 @@ class MainWindow(QMainWindow):
                 self.bar.setValue(1000)
         else:
             self.phase.setText('Analyse terminée.')
+            if 'toolkit' in value:
+                self.toolbox.complete(value['toolkit'])
+                self.phase.setText('Outil terminé localement.')
+                self.metrics.setText(f'Traitement local · {time.monotonic() - self.started:.1f} s')
             if 'john_version' in value:
                 self.john_version.setText(value['john_version'])
                 self.log(value['john_version'])
