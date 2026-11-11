@@ -9,7 +9,7 @@ from PIL import Image
 from PySide6.QtCore import Qt, QTimer, QPointF, QMimeData, QUrl
 from PySide6.QtGui import QDropEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QAbstractItemView
+from PySide6.QtWidgets import QAbstractItemView, QWidget
 from ctf_unlock.ui import MainWindow
 from test_ui import APP, wait_until
 
@@ -94,7 +94,15 @@ class ToolboxInterfaceTests(unittest.TestCase):
         self.assertFalse(self.window.start_button.isVisible())
         for index in (0,1,2):
             self.box.tabs.setCurrentIndex(index); APP.processEvents()
-            wait_until(lambda: self.box.tabs.width() <= self.window.page_scroll.viewport().width(), timeout=3)
+            try:
+                wait_until(lambda: self.box.tabs.width() <= self.window.page_scroll.viewport().width(), timeout=3)
+            except AssertionError as exc:
+                widgets = [self.window.page_scroll.viewport(), self.window.pages, self.window.tools_panel, self.box, self.box.tabs, self.box.tabs.bar, *self.box.tabs.panels]
+                widgets += [child for child in self.box.tabs.panels[index].findChildren(QWidget) if child.parent() is self.box.tabs.panels[index]]
+                details = []
+                for widget in widgets:
+                    details.append(f'{type(widget).__name__} {getattr(widget, "text", lambda: "")()[:40]!r} visible={widget.isVisible()} size={widget.size().toTuple()} hint={widget.sizeHint().toTuple()} minhint={widget.minimumSizeHint().toTuple()} min={widget.minimumSize().toTuple()} max={widget.maximumSize().toTuple()} horizontal={widget.sizePolicy().horizontalPolicy()}')
+                raise AssertionError(f'Largeur onglet {index} :\n' + '\n'.join(details)) from exc
             self.assertLessEqual(self.box.tabs.width(), self.window.page_scroll.viewport().width(), f'onglet {index}')
 
     def test_sqlite_schema_filter_pages_query_and_selected_export(self):
