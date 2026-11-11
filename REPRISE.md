@@ -1,3 +1,13 @@
+# Migration en cours · Python 3.14
+
+Le projet cible désormais **Python 3.14 64 bits**, avec **PySide6 6.12.0** et **PyInstaller 6.22.3**. Le BAT vérifie la version et refuse un ancien `.venv` sans le supprimer ; le renommer en `.venv-ancien` avant de relancer. Le workflow Windows cible aussi 3.14.
+
+Python **3.14.8** a été installé dans le nouvel environnement Linux et les imports PySide6/PyInstaller ont été vérifiés. La suite Linux a exécuté **39 tests : 33 réussis, 6 ignorés** faute de John Jumbo installé dans ce nouvel environnement, avec 7-Zip 25.01 et la vraie interface Qt. La validation Windows 3.14 reste à exécuter. Les résultats historiques ci-dessous concernent Python 3.12 et ne prouvent pas la compatibilité de la nouvelle version.
+
+Le nouveau brouillon ne contenait pas les ajouts locaux non publiés (outils texte/images et inspecteur SQLite) de l'ancien environnement. Le dépôt GitHub a été recloné en préservant ses modifications de README ; ces ajouts doivent être reconstruits et testés avant d'être annoncés disponibles.
+
+---
+
 # Reprise · CTF Unlock 1.2
 
 État au 29 octobre 2026. Sources publiées sur [loghanmrsn/CTF-Unlock](https://github.com/loghanmrsn/CTF-Unlock), branche `main`. Le projet reste local pendant toutes ses recherches ; aucun fichier n'est envoyé à un service d'analyse.

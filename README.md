@@ -48,10 +48,10 @@ Les signatures ZIP et 7z sont lues dans le fichier, indépendamment de l'extensi
 
 ## Installer sur Windows
 
-1. Installer **Python 3.12 64 bits**, avec le lanceur `py`, depuis [python.org](https://www.python.org/).
+1. Installer **Python 3.14 64 bits**, avec le lanceur `py`, depuis [python.org](https://www.python.org/).
 2. Installer **7-Zip** depuis son [site officiel](https://www.7-zip.org/). Aucun moteur n'est téléchargé automatiquement ou fourni dans ce ZIP.
 3. Extraire entièrement le projet dans un dossier accessible en écriture.
-4. Double-cliquer sur **Lancer-CTF-Unlock.bat**. Il crée `.venv`, vérifie Python 3.12, installe PySide6 puis lance l'application.
+4. Double-cliquer sur **Lancer-CTF-Unlock.bat**. Il crée `.venv`, vérifie Python 3.14, installe PySide6 puis lance l'application. Si un ancien `.venv` utilise Python 3.12, le renommer en `.venv-ancien` puis relancer le BAT ; ses fichiers ne sont jamais supprimés automatiquement.
 5. Dans **Réglages**, vérifier le moteur détecté. Au besoin, sélectionner `C:\Program Files\7-Zip\7z.exe`, puis cliquer sur **Détecter / vérifier la version**.
 
 L'installation Python nécessite Internet pour les dépendances ; l'analyse et les recherches ne font aucune requête réseau. Une fois les dépendances installées, démarrage sans vérification réseau :
@@ -142,7 +142,7 @@ set QT_QPA_PLATFORM=
 Linux :
 
 ```sh
-python3.12 -m venv .venv
+python3.14 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 CTF_UNLOCK_7ZIP=/chemin/vers/7zz QT_QPA_PLATFORM=offscreen \
   .venv/bin/python -m unittest discover -s tests -v
@@ -151,16 +151,16 @@ CTF_UNLOCK_7ZIP=/chemin/vers/7zz QT_QPA_PLATFORM=offscreen \
 
 `CTF_UNLOCK_7ZIP` est une variable **de test** ; dans l'application, sélectionner le moteur dans Réglages ou l'installer à un emplacement automatiquement détecté.
 
-**39 tests réussis sous Linux**, dont neuf tests Qt réels, avec John Jumbo et 7-Zip présents. Sans un moteur requis, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Les tests d’arrêt de processus et de limite mémoire sont exécutables sous Linux et Windows ; le test Windows attend effectivement la terminaison du processus via son handle système. Le rendu Qt a été capturé et inspecté sous Linux. **Les 39 tests ont aussi réussi trois fois sur le runner Windows**, John et Job Objects compris ; construction et démarrage hors écran du `.exe` vérifiés. Le BAT et l’essai interactif sur un bureau Windows restent à valider : voir `REPRISE.md`.
+Les validations ci-dessous concernent la version 1.2 sous Python 3.12 ; la migration Python 3.14 est suivie dans `REPRISE.md`. **39 tests réussis sous Linux**, dont neuf tests Qt réels, avec John Jumbo et 7-Zip présents. Sans un moteur requis, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Les tests d’arrêt de processus et de limite mémoire sont exécutables sous Linux et Windows ; le test Windows attend effectivement la terminaison du processus via son handle système. Le rendu Qt a été capturé et inspecté sous Linux. **Les 39 tests ont aussi réussi trois fois sur le runner Windows**, John et Job Objects compris ; construction et démarrage hors écran du `.exe` vérifiés. Le BAT et l’essai interactif sur un bureau Windows restent à valider : voir `REPRISE.md`.
 
 Pour inclure les tests John, définir aussi `CTF_UNLOCK_JOHN` et `CTF_UNLOCK_ZIP2JOHN` vers les exécutables officiels. Sans eux, les tests John sont explicitement ignorés. Le workflow Windows télécharge le paquet officiel Openwall v1.9.1-ce et vérifie son SHA-256 fixé avant extraction ; il ne redistribue pas ce paquet dans l'artefact CTF Unlock.
 
 ## Construire un exécutable Windows
 
-**Sur Windows**, avec Python 3.12 et les dépendances installées :
+**Sur Windows**, avec Python 3.14 et les dépendances installées :
 
 ```bat
-.venv\Scripts\python.exe -m pip install PyInstaller==6.12.0
+.venv\Scripts\python.exe -m pip install PyInstaller==6.22.3
 .venv\Scripts\python.exe -m PyInstaller --noconfirm --clean CTF-Unlock.spec
 ```
 
