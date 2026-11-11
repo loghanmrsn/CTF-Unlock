@@ -64,14 +64,15 @@ class SQLitePanel(QWidget):
         self.result.horizontalHeader().setDefaultSectionSize(180)
         self.result.setMinimumWidth(1); self.result.setFixedHeight(220)
         layout.addWidget(self.result)
-        row = QHBoxLayout()
         self.previous = button('Page précédente', lambda: self.move(False))
         self.next = button('Page suivante', lambda: self.move(True))
         self.json = button('Exporter JSON', lambda: self.export('json'))
         self.csv = button('Exporter CSV', lambda: self.export('csv'))
-        for item in (self.previous, self.next, self.json, self.csv):
-            item.setEnabled(False); row.addWidget(item)
-        layout.addLayout(row)
+        for pair in ((self.previous, self.next), (self.json, self.csv)):
+            row = QHBoxLayout()
+            for item in pair:
+                item.setEnabled(False); row.addWidget(item)
+            layout.addLayout(row)
         self.status = label('Sélectionnez des lignes pour les exporter, sinon toute la page sera exportée. Les exports peuvent contenir les données sensibles du challenge.')
         layout.addWidget(self.status)
         layout.addWidget(label('Limites : base 256 Mio, WAL 64 Mio ; 128 objets/colonnes ; 5 s par requête ; 500 lignes, 10 000 cellules et 2 Mio par page ; cellule 1 Mio. La pagination sans ORDER BY n’assure pas un ordre stable.'))

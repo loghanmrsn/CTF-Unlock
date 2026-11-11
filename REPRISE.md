@@ -22,6 +22,8 @@ Sous Linux : Python **3.14.8**, PySide6 **6.12.0**, Pillow **13.0.0**, 7-Zip **2
 
 Nouveaux tests : vecteurs de conversion et erreurs strictes, sorties binaires sans remplacement silencieux ; métadonnées PNG/JPEG, transparence, palette, plans de bits et extraction connue ; nouveau PNG et refus d'écraser ; signatures SQLite, schéma/index/relations/vues, identifiants avec guillemets et chemins Unicode/espaces/# (et ? sous Linux), filtres littéraux et entrées d'injection, pagination, refus des écritures/extensions, exports BLOB/NULL/TEXT invalide, CSV, WAL sans modification des sidecars, erreurs/limites et annulation. Les tests Qt exercent réellement boutons, navigation, dépôt d'image, pipette, transformation, pagination et export sélectionné ; un timer démontre la réactivité pendant une vraie requête SQL annulée.
 
+Le premier essai Windows 1.4 a révélé un curseur SQLite conservant un fichier temporaire après une lecture partielle et des commandes trop larges sur petit écran. Le curseur est désormais fermé explicitement avant la connexion et le nettoyage, et les commandes sont réparties sur plusieurs rangées ; l’assertion de largeur compare maintenant le contenu à la zone défilante, pas à la fenêtre entière.
+
 Les captures des trois onglets ont été inspectées hors écran sous Linux ; le grand espace vide initial de l'onglet texte a été corrigé. Le paquet PyInstaller Linux 1.4 a été construit et son démarrage hors écran vérifié pendant 5 secondes avec le thème présent. La validation finale Windows 1.4 sera ajoutée après le workflow correspondant. Ne pas confondre la validation de la migration seule avec celle de ces nouveaux outils.
 
 ## Prochaines vérifications

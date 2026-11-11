@@ -94,7 +94,7 @@ class ToolboxInterfaceTests(unittest.TestCase):
         self.assertFalse(self.window.start_button.isVisible())
         for index in (0,1,2):
             self.box.tabs.setCurrentIndex(index); APP.processEvents()
-            self.assertLessEqual(self.box.tabs.width(), self.window.width())
+            self.assertLessEqual(self.box.tabs.width(), self.window.page_scroll.viewport().width(), f'onglet {index}')
 
     def test_sqlite_schema_filter_pages_query_and_selected_export(self):
         path = self.database()

@@ -1,5 +1,5 @@
 """Inspection SQLite locale sur copie temporaire, sans connexion serveur."""
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 import csv
@@ -181,21 +181,21 @@ def query(catalog, sql, limit=100, offset=0, parameters=(), abort=lambda: None):
         raise ValueError('Requête vide/trop longue ou pagination hors limites.')
     # Un seul sous-select. L'authorizer reste la barrière pour toutes les opérations.
     with database(catalog.source, abort, catalog.fingerprint) as (con, source, _):
-        cursor = con.execute(f'SELECT * FROM ({sql}) LIMIT ? OFFSET ?', (*parameters, limit + 1, offset))
-        columns = tuple(info[0] for info in cursor.description)
-        maximum = min(limit, max(1, MAX_CELLS // len(columns)))
-        rows, volume, more = [], 0, False
-        for row in cursor:
-            check(abort)
-            size = sum(len(item) if isinstance(item, bytes) else len(str(item).encode('utf-8')) for item in row)
-            if len(rows) >= maximum or volume + size > MAX_RESULT_BYTES:
-                more = True
-                break
-            rows.append(row)
-            volume += size
-        if more and not rows:
-            raise ValueError('La première ligne dépasse le plafond de résultat de 2 Mio.')
-        return Page(source, columns, tuple(rows), offset, more)
+        with closing(con.execute(f'SELECT * FROM ({sql}) LIMIT ? OFFSET ?', (*parameters, limit + 1, offset))) as cursor:
+            columns = tuple(info[0] for info in cursor.description)
+            maximum = min(limit, max(1, MAX_CELLS // len(columns)))
+            rows, volume, more = [], 0, False
+            for row in cursor:
+                check(abort)
+                size = sum(len(item) if isinstance(item, bytes) else len(str(item).encode('utf-8')) for item in row)
+                if len(rows) >= maximum or volume + size > MAX_RESULT_BYTES:
+                    more = True
+                    break
+                rows.append(row)
+                volume += size
+            if more and not rows:
+                raise ValueError('La première ligne dépasse le plafond de résultat de 2 Mio.')
+            return Page(source, columns, tuple(rows), offset, more)
 
 
 def table_page(catalog, name, needle='', limit=100, offset=0, abort=lambda: None):
