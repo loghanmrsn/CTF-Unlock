@@ -1,10 +1,11 @@
 """Inspecteur SQLite : toutes les opérations disque/SQL sont déléguées au worker."""
 from pathlib import Path
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QFileDialog, QHBoxLayout,
+from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QFileDialog,
     QHeaderView, QLabel, QLineEdit, QPlainTextEdit, QPushButton, QSpinBox,
     QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
 from . import sqlite_tools as sql
+from .widgets import FlowLayout
 
 
 def label(value):
@@ -31,9 +32,9 @@ class SQLitePanel(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(label('SQLite local · tables, schéma, requêtes et exports'))
         layout.addWidget(label('Lecture seule sur copie temporaire. Bases SQLite non chiffrées uniquement ; aucune connexion serveur, import de dump ou récupération de lignes supprimées.'))
-        row = QHBoxLayout()
+        row = FlowLayout()
         self.path = QLineEdit(); self.path.setReadOnly(True)
-        row.addWidget(self.path, 1)
+        row.addWidget(self.path)
         row.addWidget(button('Choisir une base', self.choose))
         row.addWidget(button('Analyser', self.analyze))
         layout.addLayout(row)
@@ -47,10 +48,10 @@ class SQLitePanel(QWidget):
         layout.addWidget(self.tables)
         self.structure = QPlainTextEdit(); self.structure.setReadOnly(True); self.structure.setFixedHeight(140)
         layout.addWidget(self.structure)
-        row = QHBoxLayout()
+        row = FlowLayout()
         self.filter = QLineEdit(); self.filter.setPlaceholderText('Filtrer les valeurs de la table (texte littéral)'); self.filter.setMaxLength(256)
         self.limit = QSpinBox(); self.limit.setRange(1, sql.MAX_ROWS); self.limit.setValue(100); self.limit.setPrefix('Lignes : ')
-        row.addWidget(self.filter, 1); row.addWidget(self.limit)
+        row.addWidget(self.filter); row.addWidget(self.limit)
         row.addWidget(button('Lire la table', self.read_table))
         layout.addLayout(row)
         self.editor = QPlainTextEdit(); self.editor.setPlaceholderText('SELECT … ou WITH … SELECT …'); self.editor.setFixedHeight(100)
@@ -69,7 +70,7 @@ class SQLitePanel(QWidget):
         self.json = button('Exporter JSON', lambda: self.export('json'))
         self.csv = button('Exporter CSV', lambda: self.export('csv'))
         for pair in ((self.previous, self.next), (self.json, self.csv)):
-            row = QHBoxLayout()
+            row = FlowLayout()
             for item in pair:
                 item.setEnabled(False); row.addWidget(item)
             layout.addLayout(row)

@@ -9,7 +9,7 @@ from PIL import Image
 from PySide6.QtCore import Qt, QTimer, QPointF, QMimeData, QUrl
 from PySide6.QtGui import QDropEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QAbstractItemView, QWidget
+from PySide6.QtWidgets import QAbstractItemView, QPushButton, QWidget
 from ctf_unlock.ui import MainWindow
 from test_ui import APP, wait_until
 
@@ -104,6 +104,9 @@ class ToolboxInterfaceTests(unittest.TestCase):
                     details.append(f'{type(widget).__name__} {getattr(widget, "text", lambda: "")()[:40]!r} visible={widget.isVisible()} size={widget.size().toTuple()} hint={widget.sizeHint().toTuple()} minhint={widget.minimumSizeHint().toTuple()} min={widget.minimumSize().toTuple()} max={widget.maximumSize().toTuple()} horizontal={widget.sizePolicy().horizontalPolicy()}')
                 raise AssertionError(f'Largeur onglet {index} :\n' + '\n'.join(details)) from exc
             self.assertLessEqual(self.box.tabs.width(), self.window.page_scroll.viewport().width(), f'onglet {index}')
+            for child in self.box.tabs.panels[index].findChildren(QPushButton):
+                if child.isVisible():
+                    self.assertLessEqual(child.mapTo(self.box.tabs, child.rect().bottomRight()).x(), self.box.tabs.width(), child.text())
 
     def test_sqlite_schema_filter_pages_query_and_selected_export(self):
         path = self.database()
