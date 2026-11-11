@@ -109,6 +109,25 @@ class FileDrop(QFrame):
             event.acceptProposedAction()
 
 
+class PageStack(QStackedWidget):
+    """Dimensionner la zone défilante selon la page active seulement."""
+    def sizeHint(self):
+        page = self.currentWidget()
+        return page.sizeHint() if page else super().sizeHint()
+
+    def minimumSizeHint(self):
+        page = self.currentWidget()
+        return page.minimumSizeHint() if page else super().minimumSizeHint()
+
+    def hasHeightForWidth(self):
+        page = self.currentWidget()
+        return bool(page and page.hasHeightForWidth())
+
+    def heightForWidth(self, width):
+        page = self.currentWidget()
+        return page.heightForWidth(width) if page and page.hasHeightForWidth() else self.sizeHint().height()
+
+
 class Signals(QObject):
     done = Signal(object)
     progress = Signal(object)
@@ -186,7 +205,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(text('OBSERVER. ESSAYER. VÉRIFIER.', 'micro'))
         layout.addWidget(text('Un fichier. Des pistes.', 'hero'))
         layout.addWidget(text('Récupération locale pour vos challenges CTF et fichiers autorisés.\nArchives ZIP/7z · texte, images et SQLite local · aucun résultat garanti.', 'muted'))
-        self.pages = QStackedWidget()
+        self.pages = PageStack()
         self.page_scroll = scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -250,7 +269,8 @@ class MainWindow(QMainWindow):
     def navigate(self, index):
         self.pages.setCurrentIndex(index)
         for i in range(self.pages.count()):
-            self.pages.widget(i).setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred if i == index else QSizePolicy.Policy.Ignored)
+            policy = QSizePolicy.Policy.Preferred if i == index else QSizePolicy.Policy.Ignored
+            self.pages.widget(i).setSizePolicy(policy, policy)
         self.pages.updateGeometry()
         self.page_scroll.verticalScrollBar().setValue(0)
         self.start_button.setVisible(index != 4)
