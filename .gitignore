@@ -1,4 +1,5 @@
 .venv/
+.venv-ancien/
 __pycache__/
 *.py[cod]
 build/

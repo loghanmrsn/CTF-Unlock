@@ -18,13 +18,17 @@ La migration seule (commit `ae1130a`) a été validée sur [GitHub Actions Windo
 
 ## Validation actuelle de l'atelier
 
-Sous Linux : Python **3.14.8**, PySide6 **6.12.0**, Pillow **13.0.0**, 7-Zip **25.01**. **65 tests exécutés : 59 réussis et 6 ignorés** parce que John Jumbo n'est pas installé dans ce nouvel environnement. Les tests non ignorés comprennent **15 tests de la vraie interface Qt** ; un test Qt John supplémentaire attend le moteur Windows/une installation locale.
+Sous Linux : Python **3.14.8**, PySide6 **6.12.0**, Pillow **13.0.0**, 7-Zip **25.01**. **65 tests exécutés : 59 réussis et 6 ignorés** parce que John Jumbo n'est pas installé dans ce nouvel environnement. Les tests non ignorés comprennent **15 tests de la vraie interface Qt** ; le test Qt John est ignoré dans cette seule installation Linux locale.
 
 Nouveaux tests : vecteurs de conversion et erreurs strictes, sorties binaires sans remplacement silencieux ; métadonnées PNG/JPEG, transparence, palette, plans de bits et extraction connue ; nouveau PNG et refus d'écraser ; signatures SQLite, schéma/index/relations/vues, identifiants avec guillemets et chemins Unicode/espaces/# (et ? sous Linux), filtres littéraux et entrées d'injection, pagination, refus des écritures/extensions, exports BLOB/NULL/TEXT invalide, CSV, WAL sans modification des sidecars, erreurs/limites et annulation. Les tests Qt exercent réellement boutons, navigation, dépôt d'image, pipette, transformation, pagination et export sélectionné ; un timer démontre la réactivité pendant une vraie requête SQL annulée.
 
-Le premier essai Windows 1.4 a révélé un curseur SQLite conservant un fichier temporaire après une lecture partielle et des commandes trop larges sur petit écran. Le curseur est désormais fermé explicitement avant la connexion et le nettoyage, et les commandes sont réparties sur plusieurs rangées ; l’assertion de largeur compare maintenant le contenu à la zone défilante, pas à la fenêtre entière.
+La lecture SQLite ferme explicitement le curseur avant la connexion et le nettoyage, y compris quand la limite de page interrompt une lecture : Windows libère réellement le fichier temporaire. Les commandes reviennent à la ligne selon leur taille réelle et la police système. La zone défilante suit la seule page active, et les tests contrôlent la largeur des onglets et des boutons.
 
-Les captures des trois onglets ont été inspectées hors écran sous Linux ; le grand espace vide initial de l'onglet texte a été corrigé. Le paquet PyInstaller Linux 1.4 a été construit et son démarrage hors écran vérifié pendant 5 secondes avec le thème présent. La validation finale Windows 1.4 sera ajoutée après le workflow correspondant. Ne pas confondre la validation de la migration seule avec celle de ces nouveaux outils.
+Les captures des trois onglets ont été inspectées hors écran sous Linux ; le grand espace vide initial de l'onglet texte a été corrigé. Un paquet PyInstaller Linux 1.4 a été construit et son démarrage hors écran vérifié pendant 5 secondes, avec le thème présent.
+
+Sous **Windows, Python 3.14.10**, la validation [43016966965](https://github.com/loghanmrsn/CTF-Unlock/actions/runs/43016966965), sur le code du commit **42ee4b0**, a réussi : **65 tests trois fois**, aucun ignoré, dont **16 tests Qt**. John et 7-Zip officiels sont présents. Construction PyInstaller, contrôle du démarrage hors écran du binaire pendant 8 secondes, archivage et téléversement réussis.
+
+Téléchargement : [CTF-Unlock-Windows](https://github.com/loghanmrsn/CTF-Unlock/actions/runs/43016966965/artifacts/13853103277). L'archive téléchargée a été contrôlée : CRC correct, `CTF-Unlock.exe`, `python314.dll`, Qt Widgets, SQLite, Pillow, thème, README/REPRISE et exemples présents ; aucun `.venv`, cache ou moteur externe redistribué. ZIP interne : **60 568 927 octets**, SHA-256 **9ef459ac6a679c7732644ec74ba65075eadcafc2014aa11aa3138e9343895c24**. Cette note de validation a été ajoutée après la construction ; le code applicatif est identique au commit testé.
 
 ## Prochaines vérifications
 

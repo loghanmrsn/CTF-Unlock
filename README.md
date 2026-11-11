@@ -167,7 +167,11 @@ CTF_UNLOCK_7ZIP=/chemin/vers/7zz QT_QPA_PLATFORM=offscreen \
 
 `CTF_UNLOCK_7ZIP` est une variable **de test** ; dans l'application, sélectionner le moteur dans Réglages ou l'installer à un emplacement automatiquement détecté.
 
-Les validations ci-dessous concernent la version 1.2 sous Python 3.12 ; la migration Python 3.14 est suivie dans `REPRISE.md`. **39 tests réussis sous Linux**, dont neuf tests Qt réels, avec John Jumbo et 7-Zip présents. Sans un moteur requis, les tests d'intégration correspondants sont signalés **skipped**, pas réussis. Les tests d’arrêt de processus et de limite mémoire sont exécutables sous Linux et Windows ; le test Windows attend effectivement la terminaison du processus via son handle système. Le rendu Qt a été capturé et inspecté sous Linux. **Les 39 tests ont aussi réussi trois fois sur le runner Windows**, John et Job Objects compris ; construction et démarrage hors écran du `.exe` vérifiés. Le BAT et l’essai interactif sur un bureau Windows restent à valider : voir `REPRISE.md`.
+Sous **Linux, Python 3.14.8** : **65 tests exécutés, 59 réussis et 6 ignorés** faute de John Jumbo dans le nouvel environnement, dont **15 tests Qt réussis**. 7-Zip 25.01 a réellement traité les archives. Les tests ignorés ne sont pas annoncés réussis.
+
+Sous **Windows, Python 3.14.10** : les **65 tests ont réussi trois fois**, aucun ignoré, dont **16 tests Qt**, avec John Jumbo et 7-Zip réels. Les tests couvrent aussi l'atelier texte/images/SQLite, la conservation des originaux et du WAL/SHM, l'annulation et les commandes sur petit écran. Construction et démarrage hors écran du `.exe` réussis : [validation complète](https://github.com/loghanmrsn/CTF-Unlock/actions/runs/43016966965).
+
+Les captures Qt et le démarrage d'un paquet PyInstaller ont également été contrôlés sous Linux. Le BAT et l'essai interactif sur un bureau Windows (DPI, vrai glisser-déposer, presse-papier et fermeture du binaire) restent à valider manuellement. L'historique sous Python 3.12 est conservé dans `REPRISE.md`.
 
 Pour inclure les tests John, définir aussi `CTF_UNLOCK_JOHN` et `CTF_UNLOCK_ZIP2JOHN` vers les exécutables officiels. Sans eux, les tests John sont explicitement ignorés. Le workflow Windows télécharge le paquet officiel Openwall v1.9.1-ce et vérifie son SHA-256 fixé avant extraction ; il ne redistribue pas ce paquet dans l'artefact CTF Unlock.
 
@@ -182,7 +186,7 @@ Pour inclure les tests John, définir aussi `CTF_UNLOCK_JOHN` et `CTF_UNLOCK_ZIP
 
 Le dossier `dist\CTF-Unlock` contient `CTF-Unlock.exe` et `_internal` avec Python, Qt et le thème. Copier **tout le dossier**, pas uniquement le `.exe`. 7-Zip et, si ce mode est utilisé, John Jumbo restent des dépendances externes à installer depuis leurs sources officielles. Pour partager, copier aussi `README.md`, `REPRISE.md` et `examples/` à côté de l'exécutable, puis archiver tout le dossier. L'exécutable n'est pas signé.
 
-PyInstaller ne fabrique pas un exécutable Windows depuis Linux. La [construction Windows validée](https://github.com/loghanmrsn/CTF-Unlock/actions/runs/40865591410) fournit l’artefact **CTF-Unlock-Windows**. Le packaging et le démarrage ont été contrôlés automatiquement sous Windows et Linux ; l’essai interactif sur un bureau Windows reste à faire.
+PyInstaller ne fabrique pas un exécutable Windows depuis Linux. La [construction Windows validée](https://github.com/loghanmrsn/CTF-Unlock/actions/runs/43016966965) fournit l’artefact **CTF-Unlock-Windows**. Le packaging et le démarrage ont été contrôlés automatiquement sous Windows et Linux ; l’essai interactif sur un bureau Windows reste à faire.
 
 ## Structure et extensions futures
 
@@ -202,6 +206,7 @@ ctf_unlock/image_tools.py  images, couleur et extraction de bits
 ctf_unlock/sqlite_tools.py lecture SQLite sur copie et exports
 ctf_unlock/sqlite_ui.py    interface de l'inspecteur SQLite
 ctf_unlock/toolbox_ui.py   onglets de l'atelier CTF
+ctf_unlock/widgets.py      commandes adaptatives à la police et à la largeur
 theme.qss                  thème noir, blanc et argent
 tests/                     validations unitaires, moteurs et interface
 examples/                  archives connues et liste de démonstration
